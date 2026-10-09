@@ -62,7 +62,7 @@ void processActions() {
         if(request.action==Action::Retry) {
             if(phase==Phase::GameOver || failed) {
                 status.shopOpen=false; active=false; publish();
-                Cbuf_AddText(0,"devmap bog\n");
+                Cbuf_AddText(0,"devmap bog_a\n");
             }
             continue;
         }
@@ -102,7 +102,7 @@ void KisakSurvival_Begin() {
     }
     if(spawners.empty()) {
         failed=true; runtime.session().onPlayerDied();
-        message("No compatible hostile spawners. Check the original bog map files, then retry.");
+        message("No compatible hostile spawners. Check the original bog_a map files, then retry.");
     } else message("Survival: use Shop between waves. Controller: D-pad up opens Shop.");
     publish();
 }
@@ -197,5 +197,5 @@ void KisakSurvival_PumpMode() {
     Dvar_SetString(fs_gameDirVar,survival ? "mods/specops_survival" : "");
     // The existing menu-side renderer restart synchronizes workers, restarts the
     // filesystem when fs_game is modified, and rebuilds UI/world state.
-    Cbuf_AddText(0,survival ? "vid_restart\ndevmap bog\n" : "vid_restart\n");
+    Cbuf_AddText(0,survival ? "vid_restart\ndevmap bog_a\n" : "vid_restart\n");
 }

@@ -290,7 +290,7 @@ static void *KISEngineThreadMain(void *argument)
 #ifndef KISAK_MP
     if(!strcmp(KisakApple_GetGameMode(),"survival")) {
         setenv("KISAK_SURVIVAL_MODE","1",1);
-        KisakApple_RunEngine("+set fs_game mods/specops_survival +devmap bog");
+        KisakApple_RunEngine("+set fs_game mods/specops_survival +devmap bog_a");
     } else {
         unsetenv("KISAK_SURVIVAL_MODE");
         KisakApple_RunEngine(commandLine ? commandLine : "+set fs_game \"\"");

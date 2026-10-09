@@ -2169,6 +2169,12 @@ void __cdecl Com_Frame()
     else
     {
         Profile_Guard(1);
+#if defined(__APPLE__) && defined(KISAK_SP)
+        // Process native mode requests inside the frame's error-unwind boundary,
+        // before any level entities are being updated.
+        extern void KisakSurvival_PumpMode();
+        KisakSurvival_PumpMode();
+#endif
         Com_CheckSyncFrame();
         {
             PROF_SCOPED("MainThread");

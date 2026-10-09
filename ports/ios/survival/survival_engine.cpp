@@ -8,10 +8,13 @@
 #include <game/actor_spawner.h>
 #include <game/actor_senses.h>
 #include <game/actor_threat.h>
+#include <game/actor_events.h>
 #include <game/sentient.h>
 #include <server/server.h>
 #include <qcommon/cmd.h>
 #include <qcommon/qcommon.h>
+#include <universal/com_files.h>
+#include <client/client.h>
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
@@ -172,4 +175,24 @@ int KisakSurvival_AbsorbDamage(gentity_s *player,int damage) {
     if(!active || !player || !player->client || damage<=0) return damage;
     const unsigned absorbed=std::min(status.armor,static_cast<unsigned>(damage)/2);
     status.armor-=absorbed; return damage-static_cast<int>(absorbed);
+}
+void KisakSurvival_PumpMode() {
+    static int transition=-1;
+    const int requested=takeModeRequest();
+    if(requested!=-1) {
+        if(requested==static_cast<int>(selected()) && transition==-1) return;
+        transition=requested;
+        if(com_sv_running->current.enabled) {
+            // The existing disconnect command performs the engine's error-unwind teardown.
+            Cbuf_AddText(0,"disconnect\n"); return;
+        }
+    }
+    if(transition==-1 || com_sv_running->current.enabled) return;
+    KisakSurvival_Shutdown();
+    const bool survival=transition==1; transition=-1;
+    if(survival) setenv("KISAK_SURVIVAL_MODE","1",1); else unsetenv("KISAK_SURVIVAL_MODE");
+    Dvar_SetString(fs_gameDirVar,survival ? "mods/specops_survival" : "");
+    // The existing menu-side renderer restart synchronizes workers, restarts the
+    // filesystem when fs_game is modified, and rebuilds UI/world state.
+    Cbuf_AddText(0,survival ? "vid_restart\ndevmap bog\n" : "vid_restart\n");
 }

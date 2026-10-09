@@ -98,7 +98,8 @@ void __cdecl GScr_LoadLevelScript(const char *mapname, ScriptFunctions *function
 
     Com_sprintf(filename, 64, "maps/%s", mapname);
 #ifdef __APPLE__
-    I_strncpyz(filename, KisakSurvival_LevelScript(filename), sizeof(filename));
+    if (const char *entry = KisakSurvival_LevelScript(filename); entry != filename)
+        I_strncpyz(filename, entry, sizeof(filename));
 #endif
     GScr_LoadScriptAndLabel(filename, "main", functions);
 }
@@ -282,7 +283,8 @@ void __cdecl GScr_LoadScripts(const char *mapname, ScriptFunctions *functions)
         PROF_SCOPED("load level script");
         Com_sprintf(filename, 64, "maps/%s", mapname);
 #ifdef __APPLE__
-        I_strncpyz(filename, KisakSurvival_LevelScript(filename), sizeof(filename));
+        if (const char *entry = KisakSurvival_LevelScript(filename); entry != filename)
+            I_strncpyz(filename, entry, sizeof(filename));
 #endif
         GScr_LoadScriptAndLabel(filename, "main", functions);
     }

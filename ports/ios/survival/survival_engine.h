@@ -8,3 +8,4 @@ void KisakSurvival_Removed(gentity_s *enemy);
 void KisakSurvival_PlayerDied();
 int KisakSurvival_AbsorbDamage(gentity_s *player,int damage);
 void KisakSurvival_Shutdown();
+void KisakSurvival_PumpMode();

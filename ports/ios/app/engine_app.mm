@@ -16,6 +16,9 @@
 #import "client_patch.h"
 #import "survival_ui.h"
 #include "../platform/apple_engine_mode.h"
+#ifndef KISAK_MP
+#include "../survival/SurvivalBridge.hpp"
+#endif
 
 // Com_Printf, so controller diagnostics land in the console log (stderr is not captured here).
 void Com_Printf(int channel, const char *format, ...); // C++ linkage, as declared in qcommon.h
@@ -348,11 +351,25 @@ static void *KISEngineThreadMain(void *argument)
 #else
         const BOOL wrongEngine=strcmp(mode,"multiplayer")==0;
 #endif
-        if(strongSelf->_started || wrongEngine) {
+        if(wrongEngine) {
             KisakApple_PromptEngineRestart(mode);
             strongSelf->_status.text=@"Mode saved. Close COD4iOS and reopen it to continue.";
             return;
         }
+#ifndef KISAK_MP
+        if(strongSelf->_started) {
+            const BOOL survival=strcmp(mode,"survival")==0;
+            NSError *error=nil;
+            if(survival && !KisakInstallSurvivalContent([strongSelf documentsPath],&error)) {
+                strongSelf->_status.hidden=NO;
+                strongSelf->_status.text=error.localizedDescription; return;
+            }
+            cod4ios::survival::requestSinglePlayerMode(survival);
+            return;
+        }
+#else
+        if(strongSelf->_started) return;
+#endif
         strongSelf->_modeChosen=YES; [strongSelf startIfReady];
     };
 }

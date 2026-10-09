@@ -17,4 +17,10 @@ bool queueAction(Action action,std::uint64_t epoch);
 std::vector<Request> takeActions();
 void publishStatus(const Status &status);
 void resetBridge();
+// A mode change is consumed at the safe start of Com_Frame, never in an entity update.
+void requestSinglePlayerMode(bool survival);
+int takeModeRequest(); // -1 none, 0 campaign, 1 survival
+inline bool shopRequestPending(const Status &now,const Status &requested) {
+    return now.active && now.epoch==requested.epoch && now.match.phase==Phase::Intermission;
+}
 }

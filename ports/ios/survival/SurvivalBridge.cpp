@@ -1,7 +1,7 @@
 #include "SurvivalBridge.hpp"
 #include <mutex>
 namespace cod4ios::survival {
-namespace { std::mutex lock; Status current; std::vector<Request> pending; }
+namespace { std::mutex lock; Status current; std::vector<Request> pending; int requestedMode=-1; }
 Status readStatus() { std::lock_guard<std::mutex> guard(lock); return current; }
 bool queueAction(Action action,std::uint64_t epoch) {
     std::lock_guard<std::mutex> guard(lock);
@@ -18,4 +18,6 @@ void resetBridge() {
     std::lock_guard<std::mutex> guard(lock);
     const auto next=current.epoch+1; current=Status{}; current.epoch=next; pending.clear();
 }
+void requestSinglePlayerMode(bool survival) { std::lock_guard<std::mutex> guard(lock); requestedMode=survival ? 1 : 0; }
+int takeModeRequest() { std::lock_guard<std::mutex> guard(lock); const int mode=requestedMode; requestedMode=-1; return mode; }
 }

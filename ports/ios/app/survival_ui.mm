@@ -43,6 +43,7 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     kisak::controller::ButtonState _buttons;
 #ifndef KISAK_MP
     cod4ios::survival::Status _status;
+    cod4ios::survival::Status _shopRequestStatus;
 #endif
 }
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -50,7 +51,7 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
         self.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
         _hud=[UILabel new]; _hud.textColor=UIColor.whiteColor;
         _hud.font=[UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightSemibold];
-        _hud.backgroundColor=[UIColor.blackColor colorWithAlphaComponent:.6]; _hud.numberOfLines=2;
+        _hud.backgroundColor=[UIColor.blackColor colorWithAlphaComponent:.6]; _hud.numberOfLines=3;
         _hud.translatesAutoresizingMaskIntoConstraints=NO; [self addSubview:_hud];
         _shop=[UIButton buttonWithType:UIButtonTypeSystem]; [_shop setTitle:@"Shop" forState:UIControlStateNormal];
         [_shop addTarget:self action:@selector(openShop) forControlEvents:UIControlEventTouchUpInside];
@@ -124,8 +125,11 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
         _choices[i].backgroundColor=i==_selected ? [UIColor colorWithRed:.2 green:.35 blue:.18 alpha:1] : [UIColor colorWithWhite:.2 alpha:1];
 }
 - (void)showModes:(BOOL)running {
+#ifndef KISAK_MP
+    if(self.modal && !_choosingMode) cod4ios::survival::queueAction(cod4ios::survival::Action::CloseShop,_status.epoch);
+#endif
     _running=running; _choosingMode=YES;
-    [self panelTitle:@"COD4iOS" detail:running ? @"Choose the mode for your next launch. Close and reopen the app to switch." : @"Touch a mode or use D-pad and A. Original game files must be in Documents."
+    [self panelTitle:@"COD4iOS" detail:running ? @"Changing between Campaign and Survival reloads level state. Multiplayer requires reopening the app." : @"Touch a mode or use D-pad and A. Original game files must be in Documents."
                  choices:running ? @[@"Campaign",@"Special Ops Survival",@"Multiplayer",@"Cancel"] : @[@"Campaign",@"Special Ops Survival",@"Multiplayer"]];
 }
 - (void)modesPressed { [self showModes:YES]; }
@@ -140,6 +144,7 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     [self panelTitle:@"Survival Shop" detail:@"D-pad selects • A purchases • B closes"
              choices:@[@"Refill ammo — 250",@"Armor (100 points) — 500",@"AK-47 — 750",@"Close shop"]];
     _pendingShop=YES;
+    _shopRequestStatus=_status;
 #endif
 }
 - (void)choice:(UIButton *)button {
@@ -168,6 +173,7 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     _shop.enabled=s.phase==Phase::Intermission || s.phase==Phase::GameOver;
     if(self.modal && !_choosingMode) {
         if(_status.shopOpen) _pendingShop=NO;
+        if(!shopRequestPending(_status,_shopRequestStatus)) _pendingShop=NO;
         if(!_status.shopOpen && !_pendingShop) [self clearPanel];
         else _detail.text=[NSString stringWithFormat:@"Credits %u • D-pad / A / B\n%s",s.credits,_status.message];
     }

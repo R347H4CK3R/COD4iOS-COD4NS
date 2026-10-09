@@ -12,4 +12,13 @@ int main() {
     assert(takeActions().size()==32); assert(takeActions().empty());
     assert(queueAction(Action::Retry,s.epoch)); resetBridge();
     assert(takeActions().empty()); assert(readStatus().epoch!=s.epoch);
+    s.match.phase=Phase::Intermission;
+    auto next=s;
+    assert(shopRequestPending(next,s));
+    next.match.phase=Phase::Fighting;
+    assert(!shopRequestPending(next,s));
+    next=s; ++next.epoch; assert(!shopRequestPending(next,s));
+    assert(takeModeRequest()==-1);
+    requestSinglePlayerMode(true); assert(takeModeRequest()==1);
+    requestSinglePlayerMode(false); resetBridge(); assert(takeModeRequest()==0);
 }

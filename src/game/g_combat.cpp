@@ -10,6 +10,9 @@
 #include <server/sv_public.h>
 #include "actor_senses.h"
 #include "actor_events.h"
+#ifdef __APPLE__
+#include "../../ports/ios/survival/survival_engine.h"
+#endif
 
 unsigned char *bulletPriorityMap;
 unsigned char *riflePriorityMap;
@@ -232,6 +235,9 @@ void __cdecl player_die(
     client = self->client;
     if (client->ps.pm_type < PM_DEAD_LINKED)
     {
+#ifdef __APPLE__
+        KisakSurvival_PlayerDied();
+#endif
         if (client->ps.grenadeTimeLeft)
         {
             vel[0] = G_crandom();
@@ -734,6 +740,9 @@ void __cdecl G_Damage(
             }
             if (client)
             {
+#ifdef __APPLE__
+                damage = KisakSurvival_AbsorbDamage(targ, damage);
+#endif
                 client->damage_blood += damage;
                 if (dir)
                 {
@@ -1517,4 +1526,3 @@ int __cdecl G_RadiusDamage(
     }
     return v44;
 }
-

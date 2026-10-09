@@ -71,7 +71,8 @@ def main():
     # Never package build folders, Documents, game assets or local test artifacts.
     allow = {'Info.plist', 'PkgInfo', 'KisakCOD', 'Assets.car', 'TouchControls.LICENSE',
              'AppIcon60x60@2x.png', 'AppIcon76x76@2x~ipad.png',
-             'Frameworks/libkisakcod_sp.dylib', 'Frameworks/libkisakcod_mp.dylib'}
+             'Frameworks/libkisakcod_sp.dylib', 'Frameworks/libkisakcod_mp.dylib',
+             'SurvivalContent/maps/specops_survival.gsc'}
     report = {'unsigned': True, 'gameFilesIncluded': False, 'signingProfileIncluded': False}
     with tempfile.TemporaryDirectory(prefix='cod4ios-public-') as tmp:
         app = Path(tmp) / 'Payload/KisakCOD.app'
@@ -110,7 +111,7 @@ def main():
             if path.is_file():
                 data = path.read_bytes()
                 assert not any(pattern in data for pattern in private), 'Private data in ' + path.name
-                files.append(('Payload/KisakCOD.app/' + str(path.relative_to(app)), data,
+                files.append(('Payload/KisakCOD.app/' + path.relative_to(app).as_posix(), data,
                               path.name == 'KisakCOD' or path.suffix == '.dylib'))
         info = plistlib.loads((app / 'Info.plist').read_bytes())
         assert info['CFBundleIdentifier'] == 'com.devz.cod4ios'
@@ -124,7 +125,7 @@ def main():
     # Provide corresponding source separately. Keep build sources and licenses,
     # excluding binaries, caches, game files and private device status notes.
     extensions = {'.c','.cc','.cpp','.cxx','.h','.hpp','.mm','.m','.in','.cmake','.txt','.md',
-                  '.py','.sh','.bat','.cmd','.metal','.s','.S','.png','.json','.svg','.ico','.rc','.am','.html','.bmp','.LICENSE','.yml','.yaml'}
+                  '.py','.sh','.bat','.cmd','.metal','.s','.S','.png','.json','.svg','.ico','.rc','.am','.html','.bmp','.LICENSE','.yml','.yaml','.gsc'}
     sources = []
     for directory in ['src', 'ports', 'scripts', 'deps', 'docs', 'tools', '.github']:
         for path in (root / directory).rglob('*'):

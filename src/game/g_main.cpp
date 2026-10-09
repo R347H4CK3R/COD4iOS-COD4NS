@@ -30,6 +30,9 @@
 #include <qcommon/cmd.h>
 #include <client/client.h>
 #include <qcommon/qcommon.h>
+#ifdef __APPLE__
+#include "../../ports/ios/survival/survival_engine.h"
+#endif
 #include <server/sv_world.h>
 
 const char *g_helicopterYawAltitudeControlsNames[4] =
@@ -1267,6 +1270,9 @@ LABEL_43:
 
 void __cdecl G_ShutdownGame(int clearScripts)
 {
+#ifdef __APPLE__
+    KisakSurvival_Shutdown();
+#endif
     unsigned __int8 v2; // r11
 
     SV_ResetDemo();
@@ -2509,6 +2515,9 @@ int __cdecl G_RunFrame(ServerFrameExtent extent, int timeCap)
         G_UpdateActorCorpses();
     }
     Path_DrawDebug();
+#ifdef __APPLE__
+    KisakSurvival_Frame();
+#endif
     G_DrawVehiclePaths();
     G_DrawEntityBBoxes();
     G_DrawGrenadeHints();
@@ -2572,6 +2581,9 @@ void __cdecl G_LoadLevel()
     {
         PROF_SCOPED("Scr_LoadLevel");
         Scr_LoadLevel();
+#ifdef __APPLE__
+        KisakSurvival_Begin();
+#endif
     }
     {
         PROF_SCOPED("G_RunFrame");
@@ -2590,4 +2602,3 @@ void __cdecl G_LoadLevel()
         G_SendClientMessages();
     }
 }
-

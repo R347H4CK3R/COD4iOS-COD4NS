@@ -1,0 +1,51 @@
+name: Survival unsigned iOS build
+on:
+  push:
+    branches: [feature/specops-survival]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: survival-ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  unsigned-ipa:
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          cmake --version
+      - name: Host regressions
+        run: |
+          cmake -S . -B build/host -DKISAK_BUILD_PORT_TESTS=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/host --parallel 2
+          ctest --test-dir build/host --output-on-failure
+      - name: Configure device build
+        run: bash tools/configure-ios.sh
+      - name: Build both engines and launcher unsigned
+        run: |
+          set -o pipefail
+          xcodebuild -project build/ios/xcode-engine/KisakCOD.xcodeproj \
+            -target KisakCOD-Combined -configuration Release -sdk iphoneos -jobs 1 \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build 2>&1 | tee build/ios-build.log
+      - name: Package unsigned arm64 IPA and corresponding source
+        run: |
+          python3 tools/package-public-playtest.py \
+            --app build/ios/xcode-engine/ports/ios/Release-iphoneos/KisakCOD.app \
+            --source-root "$PWD" --output release/survival
+      - uses: actions/upload-artifact@v4
+        with:
+          name: COD4iOS-Survival-unsigned
+          path: release/survival/*
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: survival-ios-build-log
+          path: build/ios-build.log
+          if-no-files-found: ignore

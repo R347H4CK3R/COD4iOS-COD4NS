@@ -14,6 +14,8 @@
 #include "../engine/controller_input.h"
 #import "touch_controls.h"
 #import "client_patch.h"
+#import "survival_ui.h"
+#include "../platform/apple_engine_mode.h"
 
 // Com_Printf, so controller diagnostics land in the console log (stderr is not captured here).
 void Com_Printf(int channel, const char *format, ...); // C++ linkage, as declared in qcommon.h
@@ -38,6 +40,7 @@ int KisakApple_TextInputActive();
 - (void)start;
 - (void)publish;
 @property(nonatomic,strong) KISTouchControls *touchControls;
+@property(nonatomic,weak) KISSurvivalUI *survivalUI;
 @end
 
 @implementation KISControllerInput {
@@ -49,7 +52,7 @@ int KisakApple_TextInputActive();
 {
     using namespace kisak::controller;
     Snapshot sample;
-    [self.touchControls setAvailable:_active && !_controller && !KisakApple_TextInputActive()
+    [self.touchControls setAvailable:_active && !_controller && !self.survivalUI.modal && !KisakApple_TextInputActive()
                             context:KisakApple_ControllerTouchContext()];
     if (_active && !_controller) sample=[self.touchControls sample];
     GCExtendedGamepad *pad = _controller.extendedGamepad;
@@ -119,6 +122,7 @@ int KisakApple_TextInputActive();
             }
         }
     }
+    if(self.survivalUI.modal) { [self.touchControls cancelInputs]; sample={}; }
     KisakApple_ControllerSubmit(sample);
 }
 - (void)refresh:(NSNotification *)notification
@@ -280,7 +284,18 @@ static void *KISEngineThreadMain(void *argument)
     // Development aid: engine startup commands (for example "+devmap killhouse")
     // come from KISAK_COMMANDLINE, which simctl forwards as SIMCTL_CHILD_KISAK_COMMANDLINE.
     const char *commandLine = getenv("KISAK_COMMANDLINE");
-    KisakApple_RunEngine(commandLine ? commandLine : "");
+#ifndef KISAK_MP
+    if(!strcmp(KisakApple_GetGameMode(),"survival")) {
+        setenv("KISAK_SURVIVAL_MODE","1",1);
+        KisakApple_RunEngine("+set fs_game mods/specops_survival +devmap bog");
+    } else {
+        unsetenv("KISAK_SURVIVAL_MODE");
+        KisakApple_RunEngine(commandLine ? commandLine : "+set fs_game \"\"");
+    }
+#else
+    unsetenv("KISAK_SURVIVAL_MODE");
+    KisakApple_RunEngine(commandLine ? commandLine : "+set fs_game \"\"");
+#endif
     return nullptr;
 }
 
@@ -296,6 +311,8 @@ static void *KISEngineThreadMain(void *argument)
     KISControllerInput *_controllerInput;
     KISTouchControls *_touchControls;
     CADisplayLink *_displayLink;
+    KISSurvivalUI *_survivalUI;
+    BOOL _modeChosen;
 }
 
 - (void)loadView
@@ -320,6 +337,24 @@ static void *KISEngineThreadMain(void *argument)
         [_status.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-24],
         [_status.centerYAnchor constraintEqualToAnchor:safe.centerYAnchor],
     ]];
+    _survivalUI=[[KISSurvivalUI alloc] initWithFrame:self.view.bounds];
+    [self.view addSubview:_survivalUI];
+    __weak KISEngineViewController *weakSelf=self;
+    _survivalUI.modeSelected=^(const char *mode) {
+        KISEngineViewController *strongSelf=weakSelf; if(!strongSelf) return;
+        if(!KisakApple_SetGameMode(mode)) return;
+#ifdef KISAK_MP
+        const BOOL wrongEngine=strcmp(mode,"multiplayer")!=0;
+#else
+        const BOOL wrongEngine=strcmp(mode,"multiplayer")==0;
+#endif
+        if(strongSelf->_started || wrongEngine) {
+            KisakApple_PromptEngineRestart(mode);
+            strongSelf->_status.text=@"Mode saved. Close COD4iOS and reopen it to continue.";
+            return;
+        }
+        strongSelf->_modeChosen=YES; [strongSelf startIfReady];
+    };
 }
 
 - (NSString *)documentsPath
@@ -346,6 +381,7 @@ static void *KISEngineThreadMain(void *argument)
 {
     if (_started)
         return;
+    if(!_modeChosen) { [_survivalUI showModes:NO]; return; }
 
     NSString *root = [self documentsPath];
     if (![self hasGameData:root])
@@ -355,6 +391,15 @@ static void *KISEngineThreadMain(void *argument)
                        @"Then reopen the app.";
         return;
     }
+#ifndef KISAK_MP
+    if(!strcmp(KisakApple_GetGameMode(),"survival")) {
+        NSError *error=nil;
+        if(!KisakInstallSurvivalContent(root,&error)) {
+            _status.text=[NSString stringWithFormat:@"Survival content could not be prepared: %@",error.localizedDescription];
+            return;
+        }
+    }
+#endif
 
 #ifdef KISAK_MP
     if(!_patchReady) {
@@ -428,8 +473,10 @@ static void *KISEngineThreadMain(void *argument)
         _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(30.0f, maximumFPS, maximumFPS);
         [_displayLink addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
         _controllerInput = [KISControllerInput new];
+        _controllerInput.survivalUI=_survivalUI;
         _touchControls=[[KISTouchControls alloc] initWithFrame:self.view.bounds];
         [self.view addSubview:_touchControls];
+        [self.view bringSubviewToFront:_survivalUI];
         _controllerInput.touchControls=_touchControls;
         __weak KISControllerInput *input=_controllerInput;
         _touchControls.inputChanged=^{ [input publish]; };
@@ -452,6 +499,7 @@ static void *KISEngineThreadMain(void *argument)
 - (void)displayTick:(CADisplayLink *)link
 {
     (void)link; // Engine frames are uncapped and paced only by available Metal drawables.
+    [_survivalUI update];
 }
 
 - (void)syncKeyboard

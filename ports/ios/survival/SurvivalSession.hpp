@@ -4,10 +4,20 @@
 // onEnemyRemoved() and tick() from the COD4 single-player game loop.
 #include <algorithm>
 #include <cstdint>
+#include <cmath>
+#include <limits>
 
 namespace cod4ios::survival {
 enum class Phase { Idle, Intermission, Fighting, GameOver };
-enum class Purchase { Ammo, Armor };
+enum class Purchase { Ammo, Armor, Rifle };
+constexpr unsigned price(Purchase item) {
+  switch(item) {
+    case Purchase::Ammo: return 250;
+    case Purchase::Armor: return 500;
+    case Purchase::Rifle: return 750;
+  }
+  return 0;
+}
 struct Snapshot {
   Phase phase;
   unsigned wave;
@@ -15,23 +25,26 @@ struct Snapshot {
   unsigned spawnRemaining;
   unsigned credits;
   double secondsRemaining;
+  unsigned bestCompletedWave;
 };
 class Session {
   Phase phase_ = Phase::Idle;
   unsigned wave_ = 0, alive_ = 0, remaining_ = 0, credits_ = 0;
   double timer_ = 0.0;
+  unsigned best_ = 0;
   static constexpr unsigned maxAlive_ = 12;
   static constexpr double intermissionSeconds_ = 10.0;
 public:
-  void reset() { phase_=Phase::Idle; wave_=alive_=remaining_=credits_=0; timer_=0; }
+  void reset() { phase_=Phase::Idle; wave_=alive_=remaining_=credits_=best_=0; timer_=0; }
   void begin() { reset(); phase_=Phase::Intermission; timer_=3.0; }
-  Snapshot snapshot() const { return {phase_,wave_,alive_,remaining_,credits_,timer_}; }
+  Snapshot snapshot() const { return {phase_,wave_,alive_,remaining_,credits_,timer_,best_}; }
   void tick(double dt) {
-    if(dt<=0) return;
+    if(!std::isfinite(dt) || dt<=0) return;
     if(phase_==Phase::Intermission) {
       timer_=std::max(0.0,timer_-dt);
       if(timer_==0.0) startWave();
     } else if(phase_==Phase::Fighting && alive_==0 && remaining_==0) {
+      best_=std::max(best_,wave_);
       phase_=Phase::Intermission;
       timer_=intermissionSeconds_;
     }
@@ -47,25 +60,34 @@ public:
   }
   // Call if the engine failed to create requested actors; restores the budget.
   void refundFailedSpawns(unsigned count) {
+    if(phase_!=Phase::Fighting) return;
     const unsigned n=std::min(count,alive_);
     alive_-=n;
     remaining_+=n;
   }
-  void onEnemyKilled() { if(phase_==Phase::Fighting && alive_>0) { --alive_; credits_+=100; } }
+  void onEnemyKilled() { if(phase_==Phase::Fighting && alive_>0) { --alive_; credits_+=std::min(100u,std::numeric_limits<unsigned>::max()-credits_); } }
   void onEnemyRemoved() { if(phase_==Phase::Fighting && alive_>0) --alive_; }
-  void onPlayerDied() { phase_=Phase::GameOver; timer_=0; }
+  void onPlayerDied() { phase_=Phase::GameOver; timer_=0; remaining_=0; }
   bool purchase(Purchase item) {
     if(phase_!=Phase::Intermission) return false;
-    const unsigned price=item==Purchase::Ammo ? 250u : 500u;
-    if(credits_<price) return false;
-    credits_-=price;
+    const unsigned cost=price(item);
+    if(!cost || credits_<cost) return false;
+    credits_-=cost;
     return true; // Caller must grant the purchased item on successful return.
+  }
+  template<class Grant> bool tryPurchase(Purchase item, Grant grant) {
+    const unsigned cost=price(item);
+    if(phase_!=Phase::Intermission || !cost || credits_<cost) return false;
+    if(!grant()) return false;
+    credits_-=cost;
+    return true;
   }
 private:
   void startWave() {
-    ++wave_;
+    if(wave_<std::numeric_limits<unsigned>::max()) ++wave_;
     // Conservative, bounded scaling; stronger enemies can be added by adapter.
-    remaining_=std::min(8u+wave_*3u,120u);
+    remaining_=8u+std::min(wave_,37u)*3u;
+    remaining_=std::min(remaining_,120u);
     alive_=0;
     timer_=0.0;
     phase_=Phase::Fighting;

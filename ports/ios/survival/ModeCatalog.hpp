@@ -10,6 +10,12 @@ constexpr Mode fromId(std::string_view id) {
          id=="survival" ? Mode::Survival :
          id=="multiplayer" ? Mode::Multiplayer : Mode::Invalid;
 }
+constexpr Mode fromSavedId(std::string_view value) {
+  if(value=="sp") return Mode::Campaign;
+  if(value=="mp") return Mode::Multiplayer;
+  const Mode parsed=fromId(value);
+  return parsed==Mode::Invalid ? Mode::Campaign : parsed;
+}
 constexpr const char* id(Mode mode) {
   switch(mode) {
     case Mode::Campaign: return "campaign";

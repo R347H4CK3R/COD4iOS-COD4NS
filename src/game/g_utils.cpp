@@ -2772,6 +2772,10 @@ void __cdecl G_EntUnlinkFree(gentity_s *ent)
 
 void __cdecl G_FreeEntity(gentity_s *ed)
 {
+#ifdef __APPLE__
+    extern void KisakSurvival_Removed(gentity_s *);
+    KisakSurvival_Removed(ed);
+#endif
     animscripted_s *scripted; // r3
     gentity_s *tagChildren; // r30
     animscripted_s *v4; // r3
@@ -3305,4 +3309,3 @@ int __cdecl G_EntAttach(gentity_s *ent, const char *modelName, unsigned int tagN
     //Profile_EndInternal(0);
     return 1;
 }
-

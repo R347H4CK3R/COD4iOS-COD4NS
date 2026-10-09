@@ -10,6 +10,9 @@
 #include <script/scr_main.h>
 #include <xanim/xanim.h>
 #include <universal/profile.h>
+#ifdef __APPLE__
+#include "../../ports/ios/survival/survival_engine.h"
+#endif
 
 int __cdecl GScr_LoadScriptAndLabel(const char *filename, const char *label, ScriptFunctions *functions)
 {
@@ -94,6 +97,9 @@ void __cdecl GScr_LoadLevelScript(const char *mapname, ScriptFunctions *function
     char filename[64]; // [sp+50h] [-50h] BYREF
 
     Com_sprintf(filename, 64, "maps/%s", mapname);
+#ifdef __APPLE__
+    I_strncpyz(filename, KisakSurvival_LevelScript(filename), sizeof(filename));
+#endif
     GScr_LoadScriptAndLabel(filename, "main", functions);
 }
 
@@ -275,6 +281,9 @@ void __cdecl GScr_LoadScripts(const char *mapname, ScriptFunctions *functions)
     {
         PROF_SCOPED("load level script");
         Com_sprintf(filename, 64, "maps/%s", mapname);
+#ifdef __APPLE__
+        I_strncpyz(filename, KisakSurvival_LevelScript(filename), sizeof(filename));
+#endif
         GScr_LoadScriptAndLabel(filename, "main", functions);
     }
     {

@@ -230,7 +230,8 @@ set_target_properties(kisakcod_download PROPERTIES XCODE_ATTRIBUTE_CLANG_ENABLE_
     target_link_libraries(kisakcod_engine_mp PUBLIC OpenAL::OpenAL kisakcod_zoneload kisakcod_metal kisakcod_video kisakcod_mode)
 endif()
 
-add_library(kisakcod_engine_sp STATIC ${KISAK_ENGINE_SOURCES})
+add_library(kisakcod_engine_sp STATIC ${KISAK_ENGINE_SOURCES}
+    ../survival/survival_engine.cpp ../survival/SurvivalBridge.cpp)
 # dr_wav/dr_mp3 implementations live in exactly one translation unit, as in
 # scripts/sp/CMakeLists.txt.
 set_source_files_properties("${SRC_DIR}/sound/snd_driver_load_obj.cpp" PROPERTIES

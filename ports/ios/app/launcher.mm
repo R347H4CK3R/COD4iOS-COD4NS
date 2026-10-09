@@ -13,6 +13,7 @@
 #import <Foundation/Foundation.h>
 #include <dlfcn.h>
 #include <stdio.h>
+#include "../survival/ModeCatalog.hpp"
 
 extern "C" NSString *const KisakEngineModeKey = @"KisakEngineMode";
 
@@ -20,21 +21,16 @@ int main(int argc, char *argv[])
 {
     @autoreleasepool {
         NSString *mode = [NSUserDefaults.standardUserDefaults stringForKey:KisakEngineModeKey];
-        const BOOL multiplayer = ![mode isEqualToString:@"sp"];
+        const auto selected=cod4ios::modes::fromSavedId(mode.UTF8String ?: "");
+        const BOOL multiplayer = cod4ios::modes::engine(selected)==cod4ios::modes::Engine::MultiPlayer;
         NSString *name = multiplayer ? @"libkisakcod_mp.dylib" : @"libkisakcod_sp.dylib";
         NSString *path = [NSBundle.mainBundle.privateFrameworksPath stringByAppendingPathComponent:name];
 
         void *image = dlopen(path.fileSystemRepresentation, RTLD_NOW | RTLD_LOCAL);
         if (!image) {
             fprintf(stderr, "KisakCOD: cannot load %s: %s\n", name.UTF8String, dlerror());
-            // Fall back to the other engine rather than leaving the player with a dead icon.
-            name = multiplayer ? @"libkisakcod_sp.dylib" : @"libkisakcod_mp.dylib";
-            path = [NSBundle.mainBundle.privateFrameworksPath stringByAppendingPathComponent:name];
-            image = dlopen(path.fileSystemRepresentation, RTLD_NOW | RTLD_LOCAL);
-            if (!image) {
-                fprintf(stderr, "KisakCOD: no engine to load: %s\n", dlerror());
-                return 1;
-            }
+            // Loading the wrong engine would silently run a different selected mode.
+            return 1;
         }
         int (*entry)(int, char **) = (int (*)(int, char **))dlsym(image, "KisakEngine_AppMain");
         if (!entry) {

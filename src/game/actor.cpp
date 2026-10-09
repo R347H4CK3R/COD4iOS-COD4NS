@@ -780,6 +780,10 @@ void __cdecl Actor_Die(
             v17);
     if (actor->eState[actor->stateLevel] != AIS_DEATH)
     {
+#ifdef __APPLE__
+        extern void KisakSurvival_EnemyDied(gentity_s *, gentity_s *);
+        KisakSurvival_EnemyDied(self, pAttacker);
+#endif
         actor->iDamageTaken = iDamage;
         actor->damageDir[0] = *vDir;
         actor->damageDir[1] = vDir[1];
@@ -6023,4 +6027,3 @@ void __cdecl Actor_PostThink(actor_s *self)
             Actor_NodeClaimRevoked(self, 1000);
     }
 }
-

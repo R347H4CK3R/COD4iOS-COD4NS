@@ -2,13 +2,7 @@ name: Survival logic smoke test
 on:
   push:
     branches: [feature/specops-survival]
-    paths:
-      - 'ports/ios/survival/**'
-      - '.github/workflows/survival-smoke.yml'
   pull_request:
-    paths:
-      - 'ports/ios/survival/**'
-      - '.github/workflows/survival-smoke.yml'
   workflow_dispatch:
 jobs:
   survival-logic:
@@ -19,3 +13,17 @@ jobs:
         run: c++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. ports/ios/survival/tests/session_smoke.cpp -o /tmp/survival_smoke
       - name: Run smoke test
         run: /tmp/survival_smoke
+      - name: Runtime and bridge regressions
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror -pedantic ports/ios/survival/tests/runtime_tests.cpp -o /tmp/runtime_tests
+          /tmp/runtime_tests
+          c++ -std=c++17 -Wall -Wextra -Werror -pedantic ports/ios/survival/tests/bridge_tests.cpp ports/ios/survival/SurvivalBridge.cpp -pthread -o /tmp/bridge_tests
+          /tmp/bridge_tests
+      - name: Host build and tests
+        run: |
+          cmake -S . -B build/host -DKISAK_BUILD_PORT_TESTS=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/host --parallel 2
+          ctest --test-dir build/host --output-on-failure
+          python3 ports/ios/engine/tests/ServerBrowserTests.py
+          python3 ports/ios/engine/tests/ClientIdentityTests.py
+          python3 ports/ios/engine/tests/CoD4xDownloadTests.py

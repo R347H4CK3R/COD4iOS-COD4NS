@@ -678,6 +678,10 @@ void __cdecl GScr_SetLevelScript(ScriptFunctions *functions)
     if (I_strnicmp(String, "mp/", 3) && I_strnicmp(String, "mp\\", 3))
     {
         Com_sprintf(v3, 64, "maps/%s", String);
+#ifdef __APPLE__
+        extern const char *KisakSurvival_LevelScript(const char *original);
+        I_strncpyz(v3, KisakSurvival_LevelScript(v3), sizeof(v3));
+#endif
         g_scr_data.levelscript = GScr_SetScriptAndLabel(functions, v3, "main", 0);
     }
     else

@@ -6,6 +6,7 @@
 #include "SurvivalUpgrades.hpp"
 #include "SurvivalBridge.hpp"
 #include "../platform/apple_engine_mode.h"
+#include <database/database.h>
 #include <game/g_main.h>
 #include <game/g_local.h>
 #include <game/actor.h>

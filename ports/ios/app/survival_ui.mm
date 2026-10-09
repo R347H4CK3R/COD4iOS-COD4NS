@@ -122,11 +122,13 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
         [button.heightAnchor constraintEqualToConstant:38].active=YES;
         [_choices addObject:button]; [_panel addArrangedSubview:button];
     }
+    NSLayoutConstraint *preferredWidth=[_panel.widthAnchor constraintEqualToAnchor:_shade.safeAreaLayoutGuide.widthAnchor multiplier:.8];
+    preferredWidth.priority=UILayoutPriorityDefaultHigh;
     [NSLayoutConstraint activateConstraints:@[
         [_panel.centerXAnchor constraintEqualToAnchor:_shade.centerXAnchor],
         [_panel.centerYAnchor constraintEqualToAnchor:_shade.centerYAnchor],
         [_panel.widthAnchor constraintLessThanOrEqualToConstant:480],
-        [_panel.widthAnchor constraintEqualToAnchor:_shade.safeAreaLayoutGuide.widthAnchor multiplier:.8],
+        preferredWidth,
         [_panel.topAnchor constraintGreaterThanOrEqualToAnchor:_shade.safeAreaLayoutGuide.topAnchor constant:6],
         [_panel.bottomAnchor constraintLessThanOrEqualToAnchor:_shade.safeAreaLayoutGuide.bottomAnchor constant:-6]]];
     [self highlight];

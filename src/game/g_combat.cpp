@@ -655,6 +655,10 @@ void __cdecl G_Damage(
     }
 
     bcassert(weapon, BG_GetNumWeapons());
+#ifdef __APPLE__
+    if(KisakSurvival_Invulnerable(targ)) return;
+    damage=KisakSurvival_ModifyDamage(targ,attacker,damage,static_cast<unsigned>(weapon));
+#endif
 
     if (!targ->scr_vehicle || !G_IsVehicleImmune(targ, mod, dflags, weapon))
     {

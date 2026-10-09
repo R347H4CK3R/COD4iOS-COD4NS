@@ -31,7 +31,7 @@ class Session {
   Phase phase_ = Phase::Idle;
   unsigned wave_ = 0, alive_ = 0, remaining_ = 0, credits_ = 0;
   double timer_ = 0.0;
-  unsigned best_ = 0;
+  unsigned best_ = 0, killReward_ = 100;
   static constexpr unsigned maxAlive_ = 12;
   static constexpr double intermissionSeconds_ = 10.0;
 public:
@@ -65,23 +65,28 @@ public:
     alive_-=n;
     remaining_+=n;
   }
-  void onEnemyKilled() { if(phase_==Phase::Fighting && alive_>0) { --alive_; credits_+=std::min(100u,std::numeric_limits<unsigned>::max()-credits_); } }
+  void onEnemyKilled() { if(phase_==Phase::Fighting && alive_>0) { --alive_; addCredits(killReward_); } }
   void onEnemyRemoved() { if(phase_==Phase::Fighting && alive_>0) --alive_; }
+  void skipWave() {
+    if(phase_!=Phase::Fighting) return;
+    alive_=remaining_=0;
+    phase_=Phase::Intermission;
+    timer_=intermissionSeconds_;
+  }
   void onPlayerDied() { phase_=Phase::GameOver; timer_=0; remaining_=0; }
-  bool purchase(Purchase item) {
-    if(phase_!=Phase::Intermission) return false;
-    const unsigned cost=price(item);
-    if(!cost || credits_<cost) return false;
-    credits_-=cost;
-    return true; // Caller must grant the purchased item on successful return.
+  void configureReward(unsigned reward) { killReward_=std::min(reward,10000u); }
+  void addCredits(unsigned amount) { credits_+=std::min(amount,std::numeric_limits<unsigned>::max()-credits_); }
+  bool spendCredits(unsigned amount) {
+    if((phase_!=Phase::Fighting && phase_!=Phase::Intermission) || !amount || credits_<amount) return false;
+    credits_-=amount; return true;
   }
-  template<class Grant> bool tryPurchase(Purchase item, Grant grant) {
-    const unsigned cost=price(item);
-    if(phase_!=Phase::Intermission || !cost || credits_<cost) return false;
+  template<class Grant> bool trySpend(unsigned amount, Grant grant) {
+    if((phase_!=Phase::Fighting && phase_!=Phase::Intermission) || !amount || credits_<amount) return false;
     if(!grant()) return false;
-    credits_-=cost;
-    return true;
+    credits_-=amount; return true;
   }
+  bool purchase(Purchase item) { return spendCredits(price(item)); }
+  template<class Grant> bool tryPurchase(Purchase item, Grant grant) { return trySpend(price(item),grant); }
 private:
   void startWave() {
     if(wave_<std::numeric_limits<unsigned>::max()) ++wave_;

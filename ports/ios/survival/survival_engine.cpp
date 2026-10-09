@@ -1,5 +1,9 @@
 #include "survival_engine.h"
 #include "SurvivalRuntime.hpp"
+#include "SurvivalConfig.hpp"
+#include "SurvivalProfile.hpp"
+#include "SurvivalPause.hpp"
+#include "SurvivalUpgrades.hpp"
 #include "SurvivalBridge.hpp"
 #include "../platform/apple_engine_mode.h"
 #include <game/g_main.h>
@@ -29,9 +33,36 @@ std::vector<int> spawners;
 int lastTime=0, nextSpawn=0, lastProgress=0;
 unsigned nextSpawner=0;
 bool active=false, failed=false;
+Config config;
+Profile profile;
+PauseLease pauseLease;
+WeaponUpgrades upgrades;
+int lastAmmo=0;
+unsigned awardedCompletedWave=0;
+void syncPause() {
+    if(cl_paused) pauseLease.update(active && status.shopOpen,cl_paused->current.integer,
+        [](int value){Dvar_SetInt(cl_paused,value);});
+}
+void loadConfig() {
+    KisakApple_GetSurvivalConfig(&config.map,&config.difficulty,&config.playerClass);
+    config.sanitize();
+}
+const char *reloadCommand(bool restartRenderer=false) {
+    loadConfig();
+    static char command[160];
+    std::snprintf(command,sizeof(command),"%sset kisak_survival_class %u\ndevmap %s\n",
+        restartRenderer ? "vid_restart\n" : "",config.playerClass,mapId(config.map));
+    return command;
+}
+void profileStatus() {
+    status.bank=profile.bank; status.xp=profile.xp; status.rank=rankForXP(profile.xp);
+    status.map=config.map; status.difficulty=config.difficulty; status.playerClass=config.playerClass;
+    status.packTier=g_entities[0].client ? upgrades.tier(g_entities[0].client->ps.weapon) : 0;
+}
+void persistProfile() { KisakApple_StoreSurvivalProgress(profile.bank,profile.xp); profileStatus(); }
 bool selected() { const char *value=std::getenv("KISAK_SURVIVAL_MODE"); return value && !std::strcmp(value,"1"); }
 void message(const char *text) { std::snprintf(status.message,sizeof(status.message),"%s",text); }
-void publish() { status.match=runtime.session().snapshot(); status.active=active; publishStatus(status); }
+void publish() { status.match=runtime.session().snapshot(); status.active=active; profileStatus(); publishStatus(status); }
 bool grant(Purchase item) {
     gentity_s *player=&g_entities[0];
     if(!player->r.inuse || !player->client || player->health<=0) return false;
@@ -58,39 +89,78 @@ void processActions() {
     for(const auto &request:takeActions()) {
         if(request.epoch!=status.epoch) continue;
         const auto phase=runtime.session().snapshot().phase;
-        if(request.action==Action::CloseShop) { status.shopOpen=false; continue; }
+        if(request.action==Action::CloseShop) { status.shopOpen=false; syncPause(); continue; }
         if(request.action==Action::Retry) {
-            if(phase==Phase::GameOver || failed) {
-                status.shopOpen=false; active=false; publish();
-                Cbuf_AddText(0,"devmap bog_a\n");
-            }
-            continue;
+            status.shopOpen=false; syncPause(); active=false; publish();
+            Cbuf_AddText(0,reloadCommand());
+            return;
         }
-        if(phase!=Phase::Intermission || failed) { status.shopOpen=false; continue; }
-        if(request.action==Action::OpenShop) { status.shopOpen=true; continue; }
-        if(!status.shopOpen) continue;
-        const Purchase item=request.action==Action::Ammo ? Purchase::Ammo :
-                            request.action==Action::Armor ? Purchase::Armor : Purchase::Rifle;
-        if(runtime.session().tryPurchase(item,[&]{return grant(item);})) message("Purchase complete");
-        else message("Purchase unavailable: check credits, ammo or inventory");
+        if(phase!=Phase::Intermission && phase!=Phase::Fighting) {
+            status.shopOpen=false; message("Match ended. Choose Retry to start again."); continue;
+        }
+        if(request.action==Action::OpenShop) { status.shopOpen=true; message("Match paused. Shop, Bank, Pack-a-Punch and Cheats are available."); syncPause(); continue; }
+        if(!status.shopOpen) { message("Open Shop before purchasing or using the bank."); continue; }
+        bool success=false;
+        switch(request.action) {
+        case Action::Ammo: case Action::Armor: case Action::Rifle: {
+            const Purchase item=request.action==Action::Ammo ? Purchase::Ammo : request.action==Action::Armor ? Purchase::Armor : Purchase::Rifle;
+            success=runtime.session().tryPurchase(item,[&]{return grant(item);}); break;
+        }
+        case Action::Deposit: success=deposit(runtime.session(),profile,request.amount); if(success) persistProfile(); break;
+        case Action::Withdraw: success=withdraw(runtime.session(),profile,request.amount); if(success) persistProfile(); break;
+        case Action::Pack: {
+            const auto *player=&g_entities[0];
+            const unsigned weapon=player->client ? player->client->ps.weapon : 0;
+            if(weapon && weapon<128 && weapon<BG_GetNumWeapons() && BG_GetWeaponDef(weapon)->weapType==WEAPTYPE_BULLET) {
+                const unsigned cost=upgrades.cost(weapon);
+                success=runtime.session().trySpend(cost,[&]{
+                    if(!upgrades.upgrade(weapon)) return false;
+                    Add_Ammo(&g_entities[0],weapon,g_entities[0].client->ps.weaponmodels[weapon],999,1);
+                    return true;
+                });
+            }
+            if(!success) { message("Pack-a-Punch unavailable: equip a gun, check credits, or max tier 3 reached."); continue; }
+            break;
+        }
+        case Action::God: status.godMode=!status.godMode; success=true; break;
+        case Action::InfiniteAmmo: status.infiniteAmmo=!status.infiniteAmmo; if(status.infiniteAmmo) grant(Purchase::Ammo); success=true; break;
+        case Action::Money: runtime.session().addCredits(10000); success=true; break;
+        case Action::NextWave:
+            if(phase==Phase::Fighting) {
+                for(int i=1;i<level.num_entities;++i) {
+                    auto &ent=g_entities[i];
+                    if(ent.r.inuse && ent.actor && ent.sentient && ent.sentient->eTeam==TEAM_AXIS) G_FreeEntity(&ent);
+                }
+                runtime.session().skipWave(); success=true;
+            }
+            break;
+        default: break;
+        }
+        message(success ? "Action complete." : "Unavailable: check credits, bank balance, inventory or match state.");
     }
+    syncPause();
 }
+
 }
 
 const char *KisakSurvival_LevelScript(const char *original) {
-    return selected() ? "maps/specops_survival" : original;
+    return selected() ? "maps/specops_survival_v2" : original;
 }
 const char *KisakSurvival_SaveGameDirectory() { return selected() ? "mods/specops_survival/players" : "players"; }
 bool KisakSurvival_IsSelected() { return selected(); }
 bool KisakSurvival_UsesManualRetry() { return selected(); }
 void KisakSurvival_Shutdown() {
+    status.shopOpen=false; syncPause(); upgrades.reset();
     active=false; failed=false; runtime.shutdown(); spawners.clear(); resetBridge(); status=readStatus();
 }
 void KisakSurvival_Begin() {
     KisakSurvival_Shutdown();
     if(!selected()) return;
-    active=true; runtime.begin(); status.bestWave=KisakApple_GetSurvivalBestWave();
-    lastTime=nextSpawn=lastProgress=level.time; nextSpawner=0;
+    loadConfig(); profile={KisakApple_GetSurvivalBank(),KisakApple_GetSurvivalXP()}; profile.sanitize();
+    active=true; runtime.session().configureReward(killReward(config.difficulty)); runtime.begin();
+    status.armor=config.playerClass==2 ? 100 : 0;
+    status.bestWave=KisakApple_GetSurvivalBestWave();
+    lastTime=nextSpawn=lastProgress=lastAmmo=level.time; nextSpawner=0; awardedCompletedWave=0;
     // The type scripts already ran their spawner setup and precaches during G_LoadLevel.
     // Keep friendly actors; remove preplaced hostiles so they cannot bypass wave accounting.
     for(int i=1;i<level.num_entities;++i) {
@@ -102,8 +172,8 @@ void KisakSurvival_Begin() {
     }
     if(spawners.empty()) {
         failed=true; runtime.session().onPlayerDied();
-        message("No compatible hostile spawners. Check the original bog_a map files, then retry.");
-    } else message("Survival: use Shop between waves. Controller: D-pad up opens Shop.");
+        message("This map has no compatible hostile spawners. Choose another map in Setup.");
+    } else message("Shop pauses the match at any time. Controller: D-pad up opens Shop.");
     publish();
 }
 void KisakSurvival_Frame() {
@@ -117,8 +187,14 @@ void KisakSurvival_Frame() {
     if(snapshot.bestCompletedWave>status.bestWave) {
         status.bestWave=snapshot.bestCompletedWave;
         KisakApple_RecordSurvivalBestWave(status.bestWave);
+
     }
-    if(snapshot.phase!=Phase::Intermission) status.shopOpen=false;
+    if(snapshot.bestCompletedWave>awardedCompletedWave) {
+        awardedCompletedWave=snapshot.bestCompletedWave;
+        profile.addXP(killReward(config.difficulty)); persistProfile();
+    }
+    if(snapshot.phase==Phase::GameOver) { status.shopOpen=false; syncPause(); }
+    if(status.infiniteAmmo && now-lastAmmo>=100) { grant(Purchase::Ammo); lastAmmo=now; }
     if(snapshot.phase==Phase::Fighting && snapshot.spawnRemaining && now>=nextSpawn && !failed) {
         nextSpawn=now+500;
         if(runtime.reserve(1)) {
@@ -140,9 +216,9 @@ void KisakSurvival_Frame() {
             else {
                 const unsigned slot=static_cast<unsigned>(spawned->s.number);
                 runtime.spawned(slot,++generations[slot]);
-                spawned->health=spawned->maxHealth=100+static_cast<int>(std::min(snapshot.wave-1,20u))*10;
+                spawned->health=spawned->maxHealth=static_cast<int>(enemyHealth(snapshot.wave,config.difficulty));
                 if(spawned->actor) {
-                    spawned->actor->accuracy=std::min(.2f+.015f*std::min(snapshot.wave-1,20u),.5f);
+                    spawned->actor->accuracy=enemyAccuracy(snapshot.wave,config.difficulty);
                     spawned->actor->allowDeath=1;
                     if(g_entities[0].sentient) {
                         Actor_GetPerfectInfo(spawned->actor,g_entities[0].sentient);
@@ -163,7 +239,10 @@ void KisakSurvival_EnemyDied(gentity_s *enemy,gentity_s *attacker) {
     if(!active || !enemy) return;
     const unsigned slot=static_cast<unsigned>(enemy->s.number);
     if(slot>=generations.size()) return;
-    runtime.killed(slot,generations[slot],attacker && attacker->client);
+    const bool playerKill=attacker==&g_entities[0] && attacker->client;
+    if(runtime.killed(slot,generations[slot],playerKill) && playerKill && runtime.session().snapshot().phase==Phase::Fighting) {
+        profile.addXP(killXP(config.difficulty)); persistProfile();
+    }
 }
 void KisakSurvival_Removed(gentity_s *enemy) {
     if(!active || !enemy) return;
@@ -172,14 +251,27 @@ void KisakSurvival_Removed(gentity_s *enemy) {
 }
 void KisakSurvival_PlayerDied() {
     if(!active) return;
-    runtime.session().onPlayerDied(); status.shopOpen=false; message("Game over. Retry to start a new match."); publish();
+    runtime.session().onPlayerDied(); status.shopOpen=false; syncPause(); message("Game over. Retry to start a new match."); publish();
 }
 int KisakSurvival_AbsorbDamage(gentity_s *player,int damage) {
     if(!active || !player || !player->client || damage<=0) return damage;
     const unsigned absorbed=std::min(status.armor,static_cast<unsigned>(damage)/2);
     status.armor-=absorbed; return damage-static_cast<int>(absorbed);
 }
+const char *KisakSurvival_StartupCommand() {
+    loadConfig();
+    static char command[160];
+    std::snprintf(command,sizeof(command),"+set fs_game mods/specops_survival +set kisak_survival_class %u +devmap %s",config.playerClass,mapId(config.map));
+    return command;
+}
+bool KisakSurvival_Invulnerable(gentity_s *player) { return active && selected() && status.godMode && player==&g_entities[0]; }
+int KisakSurvival_ModifyDamage(gentity_s *target,gentity_s *attacker,int damage,unsigned weapon) {
+    if(!active || !selected() || attacker!=&g_entities[0] || !target || !target->actor || !target->sentient || target->sentient->eTeam!=TEAM_AXIS) return damage;
+    return upgrades.damage(weapon,damage);
+}
 void KisakSurvival_PumpMode() {
+    // Native requests must be consumed even while cl_paused prevents G_RunFrame.
+    if(active) { SV_WaitServer(); processActions(); publish(); }
     static int transition=-1;
     const int requested=takeModeRequest();
     if(requested!=-1) {
@@ -197,5 +289,5 @@ void KisakSurvival_PumpMode() {
     Dvar_SetString(fs_gameDirVar,survival ? "mods/specops_survival" : "");
     // The existing menu-side renderer restart synchronizes workers, restarts the
     // filesystem when fs_game is modified, and rebuilds UI/world state.
-    Cbuf_AddText(0,survival ? "vid_restart\ndevmap bog_a\n" : "vid_restart\n");
+    Cbuf_AddText(0,survival ? reloadCommand(true) : "vid_restart\n");
 }

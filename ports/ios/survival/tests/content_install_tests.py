@@ -17,6 +17,8 @@ int main() { @autoreleasepool {
     NSString *source = [bundle stringByAppendingPathComponent:@"SurvivalContent/maps/specops_survival.gsc"];
     assert([fm createDirectoryAtPath:source.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:NULL]);
     assert([@"bundled script" writeToFile:source atomically:YES encoding:NSUTF8StringEncoding error:NULL]);
+    NSString *sourceV2 = [bundle stringByAppendingPathComponent:@"SurvivalContent/maps/specops_survival_v2.gsc"];
+    assert([@"bundled v2 script" writeToFile:sourceV2 atomically:YES encoding:NSUTF8StringEncoding error:NULL]);
     NSString *documents = [bundle stringByAppendingPathComponent:@"Documents"];
     assert([fm createDirectoryAtPath:documents withIntermediateDirectories:YES attributes:nil error:NULL]);
     NSError *error = nil;
@@ -25,6 +27,19 @@ int main() { @autoreleasepool {
     assert([@"user script" writeToFile:destination atomically:YES encoding:NSUTF8StringEncoding error:NULL]);
     assert(KisakInstallSurvivalContent(documents, &error));
     assert([[NSString stringWithContentsOfFile:destination encoding:NSUTF8StringEncoding error:NULL] isEqualToString:@"user script"]);
+    NSString *destinationV2 = [documents stringByAppendingPathComponent:@"mods/specops_survival/maps/specops_survival_v2.gsc"];
+    assert([[NSString stringWithContentsOfFile:destinationV2 encoding:NSUTF8StringEncoding error:NULL] isEqualToString:@"bundled v2 script"]);
+    assert([@"user v2 script" writeToFile:destinationV2 atomically:YES encoding:NSUTF8StringEncoding error:NULL]);
+    assert(KisakInstallSurvivalContent(documents, &error));
+    assert([[NSString stringWithContentsOfFile:destinationV2 encoding:NSUTF8StringEncoding error:NULL] isEqualToString:@"user v2 script"]);
+    assert([fm removeItemAtPath:destinationV2 error:NULL]);
+    assert(KisakInstallSurvivalContent(documents, &error));
+    assert([[NSString stringWithContentsOfFile:destination encoding:NSUTF8StringEncoding error:NULL] isEqualToString:@"user script"]);
+    assert([[NSString stringWithContentsOfFile:destinationV2 encoding:NSUTF8StringEncoding error:NULL] isEqualToString:@"bundled v2 script"]);
+    assert([fm removeItemAtPath:destinationV2 error:NULL]);
+    assert([fm createSymbolicLinkAtPath:destinationV2 withDestinationPath:sourceV2 error:NULL]);
+    assert(!KisakInstallSurvivalContent(documents, &error));
+    assert([fm removeItemAtPath:destinationV2 error:NULL]);
     NSString *mod = [documents stringByAppendingPathComponent:@"mods/specops_survival"];
     assert([fm removeItemAtPath:mod error:NULL]);
     NSString *main = [documents stringByAppendingPathComponent:@"main"];
@@ -47,5 +62,5 @@ with tempfile.TemporaryDirectory(prefix='survival-install-test-') as directory:
     code.write_text(harness)
     subprocess.run(['xcrun', 'clang++', '-std=c++17', '-framework', 'Foundation', str(code), '-o', str(executable)], check=True)
     subprocess.run([str(executable)], check=True)
-print('Installer: copies missing script, preserves edits, rejects redirected paths and directories')
+print('Installer: copies missing versioned scripts, preserves both edits, rejects redirected paths and directories')
 

@@ -18,6 +18,7 @@
 #include "../platform/apple_engine_mode.h"
 #ifndef KISAK_MP
 #include "../survival/SurvivalBridge.hpp"
+#include "../survival/survival_engine.h"
 #endif
 
 // Com_Printf, so controller diagnostics land in the console log (stderr is not captured here).
@@ -290,7 +291,7 @@ static void *KISEngineThreadMain(void *argument)
 #ifndef KISAK_MP
     if(!strcmp(KisakApple_GetGameMode(),"survival")) {
         setenv("KISAK_SURVIVAL_MODE","1",1);
-        KisakApple_RunEngine("+set fs_game mods/specops_survival +devmap bog_a");
+        KisakApple_RunEngine(KisakSurvival_StartupCommand());
     } else {
         unsetenv("KISAK_SURVIVAL_MODE");
         KisakApple_RunEngine(commandLine ? commandLine : "+set fs_game \"\"");

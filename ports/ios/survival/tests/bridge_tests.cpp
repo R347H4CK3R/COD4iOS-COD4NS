@@ -16,8 +16,12 @@ int main() {
     auto next=s;
     assert(shopRequestPending(next,s));
     next.match.phase=Phase::Fighting;
-    assert(!shopRequestPending(next,s));
+    assert(shopRequestPending(next,s));
+    next.match.phase=Phase::GameOver; assert(!shopRequestPending(next,s));
     next=s; ++next.epoch; assert(!shopRequestPending(next,s));
+    s=readStatus(); s.active=true; publishStatus(s);
+    assert(queueAction(Action::Deposit,s.epoch,500));
+    auto transfer=takeActions(); assert(transfer.size()==1 && transfer[0].amount==500);
     assert(takeModeRequest()==-1);
     requestSinglePlayerMode(true); assert(takeModeRequest()==1);
     requestSinglePlayerMode(false); resetBridge(); assert(takeModeRequest()==0);

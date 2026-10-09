@@ -11,7 +11,7 @@ if(APPLE)
 endif()
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    foreach(test session_smoke runtime_tests bridge_tests)
+    foreach(test session_smoke runtime_tests bridge_tests controls_tests expansion_tests)
         add_executable(kisakcod_survival_${test} survival/tests/${test}.cpp survival/SurvivalBridge.cpp)
         target_compile_features(kisakcod_survival_${test} PRIVATE cxx_std_17)
         target_compile_options(kisakcod_survival_${test} PRIVATE -UNDEBUG)
@@ -191,8 +191,8 @@ foreach(app_target KisakCOD-SP KisakCOD-MP kisakcod_sp_engine kisakcod_mp_engine
 endforeach()
 foreach(app_target KisakCOD-SP KisakCOD-MP KisakCOD-Combined)
     if(TARGET ${app_target})
-        target_sources(${app_target} PRIVATE survival/content/maps/specops_survival.gsc)
-        set_source_files_properties(survival/content/maps/specops_survival.gsc PROPERTIES
+        target_sources(${app_target} PRIVATE survival/content/maps/specops_survival.gsc survival/content/maps/specops_survival_v2.gsc)
+        set_source_files_properties(survival/content/maps/specops_survival.gsc survival/content/maps/specops_survival_v2.gsc PROPERTIES
             MACOSX_PACKAGE_LOCATION "Resources/SurvivalContent/maps")
     endif()
 endforeach()

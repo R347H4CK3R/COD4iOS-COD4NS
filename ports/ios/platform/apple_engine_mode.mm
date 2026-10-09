@@ -3,6 +3,9 @@
 // already owns Metal, the audio device and its hunk, and cannot be torn down from inside itself.
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#include <algorithm>
+#include <cmath>
+#include <climits>
 #include "apple_engine_mode.h"
 #include "../survival/ModeCatalog.hpp"
 
@@ -44,6 +47,50 @@ void KisakApple_RecordSurvivalBestWave(unsigned wave) {
         [NSUserDefaults.standardUserDefaults setInteger:MIN(wave,1000000u) forKey:@"KisakSurvivalBestWave"];
 }
 
+// Profile and setup each use a single record, so partial preference writes cannot
+// produce mixed balances or mixed configuration selections.
+static NSDictionary *SurvivalRecord(NSString *key) {
+    id record=[NSUserDefaults.standardUserDefaults objectForKey:key];
+    if(![record isKindOfClass:NSDictionary.class]) return nil;
+    id version=record[@"version"];
+    if(![version isKindOfClass:NSNumber.class] || [version doubleValue]!=1.0) return nil;
+    return record;
+}
+static unsigned SurvivalNumber(id value, unsigned fallback, unsigned maximum) {
+    if(![value isKindOfClass:NSNumber.class]) return fallback;
+    double number=[value doubleValue];
+    if(!std::isfinite(number) || number<0 || std::floor(number)!=number) return fallback;
+    return static_cast<unsigned>(std::min(number,static_cast<double>(maximum)));
+}
+unsigned KisakApple_GetSurvivalBank() {
+    @autoreleasepool { return SurvivalNumber(SurvivalRecord(@"KisakSurvivalProgress")[@"bank"],0,1000000000u); }
+}
+unsigned KisakApple_GetSurvivalXP() {
+    @autoreleasepool { return SurvivalNumber(SurvivalRecord(@"KisakSurvivalProgress")[@"xp"],0,1000000000u); }
+}
+void KisakApple_StoreSurvivalProgress(unsigned bank, unsigned xp) {
+    @autoreleasepool {
+        [NSUserDefaults.standardUserDefaults setObject:@{@"version":@1,@"bank":@(std::min(bank,1000000000u)),@"xp":@(std::min(xp,1000000000u))} forKey:@"KisakSurvivalProgress"];
+    }
+}
+void KisakApple_GetSurvivalConfig(unsigned *map, unsigned *difficulty, unsigned *playerClass) {
+    @autoreleasepool {
+        NSDictionary *record=SurvivalRecord(@"KisakSurvivalConfig");
+        unsigned m=SurvivalNumber(record[@"map"],0,UINT_MAX);
+        unsigned d=SurvivalNumber(record[@"difficulty"],1,UINT_MAX);
+        unsigned c=SurvivalNumber(record[@"playerClass"],0,UINT_MAX);
+        if(map) *map=m<5?m:0;
+        if(difficulty) *difficulty=d<4?d:1;
+        if(playerClass) *playerClass=c<3?c:0;
+    }
+}
+bool KisakApple_SetSurvivalConfig(unsigned map, unsigned difficulty, unsigned playerClass) {
+    if(map>=5 || difficulty>=4 || playerClass>=3) return false;
+    @autoreleasepool {
+        [NSUserDefaults.standardUserDefaults setObject:@{@"version":@1,@"map":@(map),@"difficulty":@(difficulty),@"playerClass":@(playerClass)} forKey:@"KisakSurvivalConfig"];
+        return true;
+    }
+}
 void KisakApple_PromptEngineRestart(const char *mode)
 {
     @autoreleasepool {

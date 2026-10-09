@@ -10,6 +10,11 @@ bool KisakApple_SetGameMode(const char *mode);
 const char *KisakApple_GetGameMode();
 unsigned KisakApple_GetSurvivalBestWave();
 void KisakApple_RecordSurvivalBestWave(unsigned wave);
+unsigned KisakApple_GetSurvivalBank();
+unsigned KisakApple_GetSurvivalXP();
+void KisakApple_StoreSurvivalProgress(unsigned bank, unsigned xp);
+void KisakApple_GetSurvivalConfig(unsigned *map, unsigned *difficulty, unsigned *playerClass);
+bool KisakApple_SetSurvivalConfig(unsigned map, unsigned difficulty, unsigned playerClass);
 void KisakApple_PromptEngineRestart(const char *mode);
 #ifdef __cplusplus
 }

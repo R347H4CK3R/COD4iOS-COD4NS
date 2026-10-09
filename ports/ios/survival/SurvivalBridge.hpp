@@ -3,17 +3,19 @@
 #include <cstdint>
 #include <vector>
 namespace cod4ios::survival {
-enum class Action { OpenShop, CloseShop, Ammo, Armor, Rifle, Retry };
+enum class Action { OpenShop, CloseShop, Ammo, Armor, Rifle, Retry, Deposit, Withdraw, Pack, God, InfiniteAmmo, Money, NextWave };
 struct Status {
     Snapshot match{Phase::Idle,0,0,0,0,0,0};
     bool active=false, shopOpen=false;
     unsigned bestWave=0, armor=0;
+    unsigned bank=0, xp=0, rank=1, packTier=0, map=0, difficulty=1, playerClass=0;
+    bool godMode=false, infiniteAmmo=false;
     std::uint64_t epoch=0;
     char message[192]{};
 };
-struct Request { Action action; std::uint64_t epoch; };
+struct Request { Action action; std::uint64_t epoch; unsigned amount=0; };
 Status readStatus();
-bool queueAction(Action action,std::uint64_t epoch);
+bool queueAction(Action action,std::uint64_t epoch,unsigned amount=0);
 std::vector<Request> takeActions();
 void publishStatus(const Status &status);
 void resetBridge();
@@ -21,6 +23,6 @@ void resetBridge();
 void requestSinglePlayerMode(bool survival);
 int takeModeRequest(); // -1 none, 0 campaign, 1 survival
 inline bool shopRequestPending(const Status &now,const Status &requested) {
-    return now.active && now.epoch==requested.epoch && now.match.phase==Phase::Intermission;
+    return now.active && now.epoch==requested.epoch && (now.match.phase==Phase::Intermission || now.match.phase==Phase::Fighting);
 }
 }

@@ -72,7 +72,7 @@ def main():
     allow = {'Info.plist', 'PkgInfo', 'KisakCOD', 'Assets.car', 'TouchControls.LICENSE',
              'AppIcon60x60@2x.png', 'AppIcon76x76@2x~ipad.png',
              'Frameworks/libkisakcod_sp.dylib', 'Frameworks/libkisakcod_mp.dylib',
-             'SurvivalContent/maps/specops_survival.gsc'}
+             'SurvivalContent/maps/specops_survival.gsc', 'SurvivalContent/maps/specops_survival_v2.gsc'}
     report = {'unsigned': True, 'gameFilesIncluded': False, 'signingProfileIncluded': False}
     with tempfile.TemporaryDirectory(prefix='cod4ios-public-') as tmp:
         app = Path(tmp) / 'Payload/KisakCOD.app'

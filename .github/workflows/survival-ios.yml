@@ -31,9 +31,11 @@ jobs:
           cmake --build build/host --parallel 2
           ctest --test-dir build/host --output-on-failure
           python3 ports/ios/survival/tests/map_target_tests.py
+          python3 ports/ios/survival/tests/native_actions_tests.py
           python3 ports/ios/survival/tests/manual_retry_tests.py
           python3 ports/ios/survival/tests/save_isolation_tests.py
           python3 ports/ios/survival/tests/content_install_tests.py
+          python3 ports/ios/survival/tests/profile_persistence_tests.py
       - name: Configure device build
         run: bash tools/configure-ios.sh
       - name: Build both engines and launcher unsigned

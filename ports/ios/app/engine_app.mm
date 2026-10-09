@@ -448,7 +448,14 @@ static void *KISEngineThreadMain(void *argument)
 #endif
     const int width = static_cast<int>(self.view.bounds.size.width * scale);
     const int height = static_cast<int>(self.view.bounds.size.height * scale);
-    ((CAMetalLayer *)_engineView.layer).drawableSize = CGSizeMake(width, height);
+    CAMetalLayer *renderLayer = (CAMetalLayer *)_engineView.layer;
+    // Hide Apple's diagnostic HUD even when enabled in device Developer settings.
+    // Preserve other layer settings; clearing these keys is the public HUD API.
+    NSMutableDictionary *hud = [renderLayer.developerHUDProperties mutableCopy] ?: [NSMutableDictionary new];
+    [hud removeObjectForKey:@"mode"];
+    [hud removeObjectForKey:@"logging"];
+    renderLayer.developerHUDProperties = hud;
+    renderLayer.drawableSize = CGSizeMake(width, height);
     KisakApple_SetRenderWindow((__bridge void *)_engineView, width, height);
     const UIEdgeInsets insets = self.view.safeAreaInsets;
     // Symmetric margins also protect the HUD after rotating to the other

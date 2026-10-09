@@ -2,6 +2,12 @@ name: Survival unsigned iOS build
 on:
   push:
     branches: [feature/specops-survival]
+    paths:
+      - "src/**"
+      - "ports/ios/**"
+      - "tools/**"
+      - "CMakeLists.txt"
+      - ".github/workflows/survival-ios.yml"
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,6 +30,7 @@ jobs:
           cmake -S . -B build/host -DKISAK_BUILD_PORT_TESTS=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug
           cmake --build build/host --parallel 2
           ctest --test-dir build/host --output-on-failure
+          python3 ports/ios/survival/tests/content_install_tests.py
       - name: Configure device build
         run: bash tools/configure-ios.sh
       - name: Build both engines and launcher unsigned

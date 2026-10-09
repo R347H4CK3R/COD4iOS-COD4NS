@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Exercise production browser/cache code against empty Documents."""
 from pathlib import Path
-import subprocess, tempfile
+import subprocess, tempfile, shutil
+compiler=['xcrun', 'clang++'] if shutil.which('xcrun') else ['clang++']
 root=Path(__file__).resolve().parents[4]
 source=(root/'src/client_mp/cl_cod4x.cpp').read_text()
 cache=source[source.index('using Verdict ='):source.index('void send(msg_t *msg)')]
@@ -61,5 +62,5 @@ int main(int argc,char **argv){
 '''
 with tempfile.TemporaryDirectory() as tmp:
     p=Path(tmp);(p/'test.cpp').write_text(stubs+cache+error+tests)
-    subprocess.run(['xcrun','clang++','-std=c++17','-I',str(root/'ports/ios/network'),str(p/'test.cpp'),'-o',str(p/'test')],check=True)
+    subprocess.run(compiler+['-std=c++17','-I',str(root/'ports/ios/network'),str(p/'test.cpp'),'-o',str(p/'test')],check=True)
     subprocess.run([str(p/'test'),str(p)],check=True)

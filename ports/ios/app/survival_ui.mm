@@ -13,9 +13,9 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     NSString *destination=[root stringByAppendingPathComponent:relative];
     // Resolve the existing ancestors too: a user-created symlink must not redirect writes.
     NSString *resolved=destination.stringByResolvingSymlinksInPath;
-    NSString *prefix=[documents.stringByResolvingSymlinksInPath stringByAppendingString:@"/"];
-    if(![resolved hasPrefix:prefix]) {
-        if(error) *error=[NSError errorWithDomain:@"COD4iOSSurvival" code:1 userInfo:@{NSLocalizedDescriptionKey:@"The Survival mod folder points outside Documents."}];
+    NSString *expected=[documents.stringByResolvingSymlinksInPath stringByAppendingPathComponent:@"mods/specops_survival/maps/specops_survival.gsc"];
+    if(![resolved isEqualToString:expected]) {
+        if(error) *error=[NSError errorWithDomain:@"COD4iOSSurvival" code:1 userInfo:@{NSLocalizedDescriptionKey:@"The Survival mod path must stay in Documents/mods/specops_survival without redirected folders."}];
         return NO;
     }
     NSString *source=[NSBundle.mainBundle.resourcePath stringByAppendingPathComponent:@"SurvivalContent/maps/specops_survival.gsc"];

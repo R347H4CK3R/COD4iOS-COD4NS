@@ -1,37 +1,22 @@
-# Optional Survival content layout
+# Survival content installation
 
-The original COD4 PC assets are still required in COD4iOS/Documents:
-`main/`, `zone/`, and `localization.txt`.
-
-The proposed optional overlay uses this additional directory, **without overwriting retail data**:
+Put the original COD4 PC game data in the app's Documents folder:
 
 ```
-COD4iOS/Documents/
+Documents/
   localization.txt
   main/
   zone/
   mods/
     specops_survival/
-      manifest.cfg
       maps/
-      scripts/
-      assets/
+        specops_survival.gsc
 ```
 
-The only guaranteed path currently defined by source is
-`mods/specops_survival` in `ModeCatalog.hpp`. The native loader does not
-yet consume these files. Do **not** copy the Windows mod download into
-COD4iOS and expect it to load.
+Keep the original folder structure, including `zone/english` (or your installation's language directory), fastfiles and IWD archives. Retail files stay in `main` and `zone`; do not move them into `mods`.
 
-Mode-to-engine routing:
-- Campaign -> existing COD4 single-player engine
-- Survival -> single-player engine, with new mode hooks to be implemented
-- Multiplayer -> existing multiplayer engine
+Selecting Survival installs its bundled script at `mods/specops_survival/maps/specops_survival.gsc` only if absent. Existing mod scripts are preserved. Survival sets `fs_game` to `mods/specops_survival` and loads the original single-player `bog` map through its independent level entry. No separate Windows mod download is needed.
 
-Switching between single-player and multiplayer requires relaunching the
-appropriate engine; Campaign <-> Survival should eventually avoid a full
-app relaunch if level state can be safely reset. Persist the requested mode
-before relaunch. Unrecognized mode IDs must be rejected.
+Campaign and Survival use the single-player engine. Changing between them reloads level state. Multiplayer uses the other engine and requires reopening the app after selecting it. Original retail data, profiles and saves are not replaced by this installer.
 
-Proprietary maps/archives stay in the user's local game folder, never in
-this public source repository.
+The IPA includes the independent Survival script, not retail maps or archives. Supply your own compatible COD4 PC installation data separately. Full gameplay validation requires those files and an iOS device.

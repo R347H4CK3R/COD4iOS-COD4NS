@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Exercise production identity creation and the non-Steam challenge expression."""
 from pathlib import Path
-import subprocess, tempfile
+import subprocess, tempfile, shutil
+compiler=['xcrun', 'clang++'] if shutil.which('xcrun') else ['clang++']
 root=Path(__file__).resolve().parents[4]
 source=(root/'src/client_mp/cl_main_mp.cpp').read_text()
 start=source.index('const char *CL_GetClientGuid()')
@@ -45,6 +46,6 @@ int main(){
 with tempfile.TemporaryDirectory() as tmp:
     p=Path(tmp)
     (p/'test.cpp').write_text(stubs+identity+'\nconst char *challenge(){'+challenge.replace('v2 =','return')+'}\n'+tests)
-    subprocess.run(['xcrun','clang++','-std=c++17',str(p/'test.cpp'),'-o',str(p/'test')],check=True)
+    subprocess.run(compiler+['-std=c++17',str(p/'test.cpp'),'-o',str(p/'test')],check=True)
     subprocess.run([str(p/'test')],check=True)
 print('Production identity: 1000 unique installs, stable saved GUID, upstream challenge bytes passed')

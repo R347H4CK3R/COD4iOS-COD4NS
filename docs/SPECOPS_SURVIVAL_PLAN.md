@@ -31,4 +31,4 @@ This is an **independent, offline wave-survival game mode** built on the COD4iOS
 - No claims of success from CI alone: on-device gameplay testing is separate.
 
 ## Current status
-Planning branch only. No survival gameplay implemented, IPA built or gameplay validated yet.
+The feature branch implements the bounded wave runtime, actor lifecycle tracking, kill rewards, transactional ammo/armor/rifle purchases, best-wave persistence, native mode selector, touch/controller shop and retry UI, and isolated Survival level entry. Fourteen host regression tests pass on macOS and Linux. The unsigned iOS build is being validated in GitHub Actions; device gameplay validation remains outstanding. Expansion features in Phase 2 are deferred until the first map is verified on device.

@@ -10,3 +10,5 @@ int KisakSurvival_AbsorbDamage(gentity_s *player,int damage);
 void KisakSurvival_Shutdown();
 void KisakSurvival_PumpMode();
 bool KisakSurvival_UsesManualRetry();
+const char *KisakSurvival_SaveGameDirectory();
+bool KisakSurvival_IsSelected();

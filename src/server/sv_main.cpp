@@ -19,6 +19,9 @@
 #include <client/cl_scrn.h>
 #include <game/savedevice.h>
 #include <qcommon/cmd.h>
+#ifdef __APPLE__
+#include "../../ports/ios/survival/survival_engine.h"
+#endif
 
 server_t sv;
 serverStatic_t svs;
@@ -281,6 +284,10 @@ LABEL_3:
 
 void __cdecl SV_SetLastSaveName(const char *filename)
 {
+#ifdef __APPLE__
+    // Preserve Campaign Continue while Survival uses isolated checkpoints.
+    if (KisakSurvival_IsSelected()) return;
+#endif
     if (!filename)
         MyAssertHandler("c:\\trees\\cod3\\cod3src\\src\\server\\sv_main.cpp", 374, 0, "%s", "filename");
     if (!(unsigned __int8)SV_IsInternalSave(filename))

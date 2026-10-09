@@ -5,8 +5,11 @@
 #include <universal/q_shared.h>
 #include "savedevice.h"
 #include <algorithm>
+#include <cstdio>
+#include <cstring>
 #ifdef __APPLE__
 #include "../../ports/ios/save/NativeSaveFile.h"
+#include "../../ports/ios/survival/survival_engine.h"
 #endif
 #include <qcommon/qcommon.h>
 #include <universal/com_files.h>
@@ -149,12 +152,32 @@ bool __cdecl SaveDevice_IsSaveSuccessful(void)
 	return g_saveDevice_lastSaveSucceeded;
 }
 
+static unsigned int OpenSaveFile(const char *name, int *handle)
+{
+#ifdef __APPLE__
+    if (KisakSurvival_IsSelected())
+    {
+        if (!handle) return 0;
+        *handle = 0;
+        if (!name || !*name || name[0] == '/' || name[0] == '\\'
+            || std::strstr(name, "..") || std::strchr(name, ':')) return 0;
+        char scoped[256];
+        const int length = std::snprintf(scoped, sizeof(scoped), "%s/%s",
+                                        KisakSurvival_SaveGameDirectory(), name);
+        if (length < 0 || static_cast<unsigned>(length) >= sizeof(scoped)) return 0;
+        // Open only the isolated save path, without a Campaign search fallback.
+        return FS_SV_FOpenFileRead(scoped, handle);
+    }
+#endif
+    return FS_FOpenFileRead(name, handle);
+}
+
 int __cdecl OpenDevice(char const *name, void **fileHandle)
 {
 	if (!fileHandle)
 		return -1;
 	int handle = 0;
-	unsigned int size = FS_FOpenFileRead(name, &handle);
+	unsigned int size = OpenSaveFile(name, &handle);
 	if (!handle)
 	{
 		*fileHandle = 0;
@@ -203,7 +226,7 @@ static bool SaveExistsValidated(char const *path)
 	if (!path || !*path)
 		return false;
 
-	FS_FOpenFileRead(path, &handle);
+	OpenSaveFile(path, &handle);
 	if (!handle)
 		return false;
 
@@ -294,7 +317,7 @@ int __cdecl WriteSaveToDevice(unsigned char *data, struct SaveHeader const *save
 #elif defined(__APPLE__)
     char temporary[260], destination[260];
     FS_BuildOSPath(fs_homepath->current.string, fs_gamedir, "save/temp.svg", temporary);
-    FS_BuildOSPath(fs_homepath->current.string, "players", saveHeader->filename, destination);
+    FS_BuildOSPath(fs_homepath->current.string, KisakSurvival_SaveGameDirectory(), saveHeader->filename, destination);
     if (FS_CreatePath(destination)
         || !kisak::save::VerifyAndCommit(temporary, destination, saveHeader, headerSize,
                                          data, bodySize, expectedSize))

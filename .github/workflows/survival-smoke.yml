@@ -28,6 +28,7 @@ jobs:
           cmake --build build/host --parallel 2
           ctest --test-dir build/host --output-on-failure
           python3 ports/ios/survival/tests/manual_retry_tests.py
+          python3 ports/ios/survival/tests/save_isolation_tests.py
           python3 ports/ios/engine/tests/ServerBrowserTests.py
           python3 ports/ios/engine/tests/ClientIdentityTests.py
           python3 ports/ios/engine/tests/CoD4xDownloadTests.py

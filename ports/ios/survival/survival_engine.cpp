@@ -80,6 +80,7 @@ void processActions() {
 const char *KisakSurvival_LevelScript(const char *original) {
     return selected() ? "maps/specops_survival" : original;
 }
+bool KisakSurvival_UsesManualRetry() { return selected(); }
 void KisakSurvival_Shutdown() {
     active=false; failed=false; runtime.shutdown(); spawners.clear(); resetBridge(); status=readStatus();
 }

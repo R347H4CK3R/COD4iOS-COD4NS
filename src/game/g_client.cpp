@@ -9,6 +9,9 @@
 #include <universal/com_math.h>
 #include "actor.h"
 #include <server/sv_game.h>
+#ifdef __APPLE__
+#include "../../ports/ios/survival/survival_engine.h"
+#endif
 
 void __cdecl G_FinishSetupSpawnPoint(gentity_s *ent)
 {
@@ -463,6 +466,10 @@ void __cdecl Client_Touch(gentity_s *pSelf, gentity_s *pOther, int bTouched)
 
 void __cdecl respawn(gentity_s *ent)
 {
+#ifdef __APPLE__
+    // Survival stays on its native game-over screen until explicit Retry.
+    if (KisakSurvival_UsesManualRetry()) return;
+#endif
     const dvar_s *v2; // r30
     const char *v3; // r3
     const char *v4; // r3

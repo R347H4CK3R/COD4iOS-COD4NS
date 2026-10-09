@@ -1,8 +1,16 @@
 // Standalone smoke test: c++ -std=c++17 -Wall -Wextra -pedantic -I. ports/ios/survival/tests/session_smoke.cpp -o /tmp/survival_smoke && /tmp/survival_smoke
 #include "../SurvivalSession.hpp"
+#include "../ModeCatalog.hpp"
 #include <cassert>
 using namespace cod4ios::survival;
 int main() {
+  using namespace cod4ios::modes;
+  assert(fromId("survival")==Mode::Survival);
+  assert(fromId("unknown")==Mode::Invalid);
+  assert(engine(Mode::Survival)==Engine::SinglePlayer);
+  assert(!requiresRestart(Mode::Campaign,Mode::Survival));
+  assert(requiresRestart(Mode::Survival,Mode::Multiplayer));
+  assert(survivalContentFolder()=="mods/specops_survival");
   Session s;
   assert(s.snapshot().phase==Phase::Idle);
   s.begin();

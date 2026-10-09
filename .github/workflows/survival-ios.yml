@@ -37,7 +37,7 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild -project build/ios/xcode-engine/KisakCOD.xcodeproj \
-            -target KisakCOD-Combined -configuration Release -sdk iphoneos -jobs 1 \
+            -target KisakCOD-Combined -configuration Release -sdk iphoneos -jobs 2 \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build 2>&1 | tee build/ios-build.log
       - name: Package unsigned arm64 IPA and corresponding source
         run: |

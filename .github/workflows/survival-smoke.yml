@@ -1,0 +1,21 @@
+name: Survival logic smoke test
+on:
+  push:
+    branches: [feature/specops-survival]
+    paths:
+      - 'ports/ios/survival/**'
+      - '.github/workflows/survival-smoke.yml'
+  pull_request:
+    paths:
+      - 'ports/ios/survival/**'
+      - '.github/workflows/survival-smoke.yml'
+  workflow_dispatch:
+jobs:
+  survival-logic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile with C++17
+        run: c++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. ports/ios/survival/tests/session_smoke.cpp -o /tmp/survival_smoke
+      - name: Run smoke test
+        run: /tmp/survival_smoke

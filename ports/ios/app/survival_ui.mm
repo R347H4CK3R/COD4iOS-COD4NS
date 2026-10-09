@@ -8,6 +8,17 @@
 
 BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     NSFileManager *files=NSFileManager.defaultManager;
+    // Foundation does not always resolve symlink ancestors when the final file
+    // is absent. Reject redirected components explicitly before creating folders.
+    NSString *checked=documents.stringByResolvingSymlinksInPath;
+    for(NSString *component in @[@"mods", @"specops_survival", @"maps", @"specops_survival.gsc"]) {
+        checked=[checked stringByAppendingPathComponent:component];
+        NSDictionary *attributes=[files attributesOfItemAtPath:checked error:NULL];
+        if([attributes[NSFileType] isEqualToString:NSFileTypeSymbolicLink]) {
+            if(error) *error=[NSError errorWithDomain:@"COD4iOSSurvival" code:1 userInfo:@{NSLocalizedDescriptionKey:@"The Survival mod path cannot use redirected folders or files."}];
+            return NO;
+        }
+    }
     NSString *root=[documents stringByAppendingPathComponent:@"mods/specops_survival"];
     NSString *relative=@"maps/specops_survival.gsc";
     NSString *destination=[root stringByAppendingPathComponent:relative];

@@ -13,12 +13,17 @@ This branch extends the COD4iOS codebase as a *reference implementation* for pla
 ## Compatibility boundary
 The COD4 port is based on KisakCOD (IW3). MW3 uses IW5. Archive extensions and familiar folder names do **not** imply compatible headers, asset schemas, game code, script VM, or renderer. No runtime-level MW3 support is confirmed.
 
+## Product scope (confirmed October 10, 2026)
+Target: native ARM64 iOS version of **MW3 (2011)** covering **Multiplayer, Special Ops missions, and Survival**, including applicable DLC. **Exclude the entire single-player campaign** from the launcher, asset pipeline, and acceptance tests. Co-op and online multiplayer are targeted, subject to separate protocol and server compatibility work; offline training/local play is developed first. The objective is full selected-mode feature parity, not a simplified lookalike. Milestones below are incremental engineering steps, not reductions of the final scope.
+
+Deliverable: iPhone 16 Plus landscape app with touch controls, Xbox/PlayStation/MFi gamepads, 60 FPS target, stable suspend/resume, progress/settings, and an unsigned sideloadable IPA. Keep proprietary MW3 assets private and out of public GitHub artifacts; asset installation may require user-owned local data. Reuse COD4iOS iOS infrastructure where its license permits, but implement/port IW5-specific runtime systems rather than claiming IW3 binary compatibility.
+
 ## Milestones and release gates
 1. **Inventory / proof of ownership:** generate local, sanitized file manifest; record sizes and file signatures without committing asset contents.
 2. **Format probes:** compare representative IW3/IW5 fastfile and IWD headers; add parsers that reject unknown formats safely.
-3. **Engine feasibility:** document assets, gameplay code, script VM, compression, animation, network, renderer and ABI incompatibilities. Decide between an independently implemented IW5-compatible runtime or a clean original game focused on Survival mechanics.
+3. **Engine feasibility:** document assets, gameplay code, script VM, compression, animation, network, renderer and ABI incompatibilities. Design an independently implemented or lawfully ported IW5-compatible runtime for the selected MW3 modes.
 4. **iOS platform reuse:** factor out input mapping, gamepad/haptics, touch HUD, logging, sandbox paths, video/audio bridge, settings and app lifecycle from COD4-specific startup logic.
-5. **Playable vertical slice:** first original test map with player movement, collision, camera, HUD and weapon feedback; then enemy AI, waves, buy stations, and co-op after core stability.
+5. **Playable vertical slice:** first playable native test map with player movement, collision, camera, HUD and weapon feedback; then Survival waves, Spec Ops mission logic, multiplayer rules, weapon progression, co-op networking and DLC after core stability.
 6. **Performance and packaging:** ARM64 device build, 60 FPS *target* on iPhone 16 Plus, real touch controls, Xbox/PlayStation/MFi input, safe-area handling, asset validation, unsigned IPA artifact from macOS GitHub Actions.
 7. **MW3 data integration only after verification:** test against privately supplied legally obtained game files; do not commit or redistribute original MW3 archives, movies, DLLs, or executables.
 

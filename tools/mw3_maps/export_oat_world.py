@@ -141,4 +141,3 @@ def main():
         print(json.dumps(metadata,indent=2))
     except (ExportError,OSError,subprocess.SubprocessError) as error:parser.exit(1,str(error)+'\n')
 if __name__=='__main__':main()
-

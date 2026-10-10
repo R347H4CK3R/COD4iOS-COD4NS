@@ -1,0 +1,43 @@
+name: Build patched IW5xport
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/iw5-mw3-foundation]
+    paths:
+      - '.github/workflows/build-patched-iw5xport.yml'
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout original IW5xport
+        shell: pwsh
+        run: |
+          git clone --recursive https://github.com/iw4x/iw5x-port.git iw5xport
+      - name: Fix map argc/argv handling
+        shell: pwsh
+        run: |
+          $p = 'iw5xport/src/module/command.cpp'
+          $s = [IO.File]::ReadAllText($p)
+          $regex = '(?s)(add\("map",\s*\[\]\(const params& params\)\s*\{\s*)if \(params\.size\(\) == 1\)(\s*\{\s*const auto map_name = )params\.get\(0\)'
+          $changed = [regex]::Replace($s, $regex, '${1}if (params.size() == 2)${2}params.get(1)')
+          if ($changed -eq $s) { throw 'Map command source did not match expected pattern' }
+          [IO.File]::WriteAllText($p, $changed)
+          git -C iw5xport diff -- src/module/command.cpp
+      - name: Add MSBuild
+        uses: microsoft/setup-msbuild@v2
+      - name: Generate solution
+        working-directory: iw5xport
+        shell: cmd
+        run: tools\premake5.exe vs2022
+      - name: Build patched executable
+        working-directory: iw5xport
+        shell: cmd
+        run: msbuild build\open-iw5.sln /m /v:minimal /p:Configuration=Release /p:Platform=Win32
+      - name: Upload executable and debug symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: iw5xport-mapfix-win32
+          path: |
+            iw5xport/build/bin/Win32/Release/open-iw5.exe
+            iw5xport/build/bin/Win32/Release/open-iw5.pdb
+          if-no-files-found: error

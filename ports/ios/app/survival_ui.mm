@@ -21,7 +21,36 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
         }
     }
     NSString *root=[documents stringByAppendingPathComponent:@"mods/specops_survival"];
-    for(NSString *relative in @[@"maps/specops_survival.gsc", @"maps/specops_survival_v2.gsc", @"maps/specops_survival_v3.gsc"]) {
+    NSMutableArray<NSString *> *content=[NSMutableArray arrayWithArray:@[@"maps/specops_survival.gsc", @"maps/specops_survival_v2.gsc", @"maps/specops_survival_v3.gsc"]];
+    NSString *bundleRoot=[NSBundle.mainBundle.resourcePath stringByAppendingPathComponent:@"SurvivalContent"];
+    NSString *manifestPath=[bundleRoot stringByAppendingPathComponent:@"MW3Assets.json"];
+    if([files fileExistsAtPath:manifestPath]) {
+        NSData *manifestData=[NSData dataWithContentsOfFile:manifestPath];
+        id assetNames=manifestData ? [NSJSONSerialization JSONObjectWithData:manifestData options:0 error:error] : nil;
+        if(![assetNames isKindOfClass:NSArray.class] || [assetNames count]==0) return NO;
+        // Validate the whole pack before copying: never mix an existing mod with
+        // a different bundled fastfile or texture archive.
+        for(id name in assetNames) {
+            if(![name isKindOfClass:NSString.class] || ![name length] ||
+               ![name isEqualToString:[name lastPathComponent]] ||
+               [name containsString:@"\\"] ||
+               ![@[@"ff", @"iwd"] containsObject:[name pathExtension]]) {
+                if(error) *error=[NSError errorWithDomain:@"COD4iOSSurvival" code:3 userInfo:@{NSLocalizedDescriptionKey:@"Invalid bundled MW3 asset manifest."}];
+                return NO;
+            }
+            NSString *source=[bundleRoot stringByAppendingPathComponent:name];
+            NSString *destination=[root stringByAppendingPathComponent:name];
+            NSData *bundled=[NSData dataWithContentsOfFile:source];
+            NSDictionary *attributes=[files attributesOfItemAtPath:destination error:NULL];
+            if(!bundled || (attributes && (![attributes[NSFileType] isEqualToString:NSFileTypeRegular] ||
+                ![bundled isEqualToData:[NSData dataWithContentsOfFile:destination]]))) {
+                if(error) *error=[NSError errorWithDomain:@"COD4iOSSurvival" code:4 userInfo:@{NSLocalizedDescriptionKey:@"Bundled MW3 assets conflict with an existing mod file. Your files were preserved; back up or merge that mod before installing this pack."}];
+                return NO;
+            }
+            [content addObject:name];
+        }
+    }
+    for(NSString *relative in content) {
     NSString *destination=[root stringByAppendingPathComponent:relative];
     NSDictionary *destinationAttributes=[files attributesOfItemAtPath:destination error:NULL];
     if([destinationAttributes[NSFileType] isEqualToString:NSFileTypeSymbolicLink]) {

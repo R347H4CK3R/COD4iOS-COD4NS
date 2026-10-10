@@ -15,6 +15,8 @@ PREFIX = 'Payload/KisakCOD.app/SurvivalContent/'
 
 def bundle(ipa, assets, output):
     ipa, assets, output = map(Path, (ipa, assets, output))
+    if output.suffix.lower() != '.ipa' or output.with_suffix('.json').exists():
+        raise ValueError('Use a new IPA and checksum report destination')
     if output.resolve() == ipa.resolve() or output.exists():
         raise ValueError('Use a new output file; input IPA is preserved')
     files = sorted(p for p in assets.iterdir() if p.suffix in {'.ff', '.iwd'})
@@ -35,7 +37,7 @@ def bundle(ipa, assets, output):
         if any('_CodeSignature/' in n or n.endswith('embedded.mobileprovision') for n in names):
             raise ValueError('Bundle before signing the IPA')
         output.parent.mkdir(parents=True, exist_ok=True)
-        with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as target:
+        with zipfile.ZipFile(output, 'x', zipfile.ZIP_DEFLATED) as target:
             for entry in source.infolist():
                 target.writestr(entry, source.read(entry.filename))
             for path in files:
@@ -56,5 +58,6 @@ if __name__ == '__main__':
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
     report = bundle(args.ipa, args.assets, args.output)
-    args.output.with_suffix('.json').write_text(json.dumps(report, indent=2)+'\n')
+    with args.output.with_suffix('.json').open('x') as sidecar:
+        sidecar.write(json.dumps(report, indent=2)+'\n')
     print('Personal unsigned IPA bundled and verified')

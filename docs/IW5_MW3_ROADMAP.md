@@ -135,3 +135,11 @@ OpenAssetTools v0.33.0 was used in a temporary private workspace, with original 
 - `tools/iw5/validate_gltf.py` committed for reproducible dependency checks. Private extracted retail assets were **not** uploaded to GitHub.
 
 Interpretation: this validates limited portable *model/texture file export*, not a rendered iOS game world. Critical gaps remain: full world geometry, player collision, animations, shaders/material conversion to Metal, script VM and networked MW3 gameplay.
+
+## Shared normal-map dependency resolution — verified PC milestone
+- Searched **47** `main/*.iwd` archives without extracting assets; original `images/$identitynormalmap.iwi` is present in `main/iw_00.iwd` (48-byte entry).
+- For **private glTF preview only**, `tools/iw5/generate_neutral_normal.py` generates a clearly synthetic 1×1 RGBA DDS neutral normal texture `images/$identitynormalmap.dds`. It does not overwrite existing files and is not presented as the original texture.
+- Script executed successfully in the temporary Windows model export directory, producing a 132-byte DDS.
+- Rerunning `validate_gltf.py` reported **16 valid glTF files, 68 mesh groups, 513 nodes, 0 missing external references** (previously 3 unresolved image references).
+- **Scope of pass:** resource-reference existence only. No glTF binary accessor/buffer validity test, image quality check, Metal rendering, animation, level geometry, collision or playable MW3 runtime is established.
+- Next engineering gate: validate glTF accessors / binary buffer bounds and build a minimal Metal-based viewer that renders one asset correctly before expanding toward original map geometry and selected modes.

@@ -420,32 +420,22 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
 
 - (BOOL)loadoutWeaponAvailable:(unsigned)value secondary:(BOOL)secondary {
 #ifndef KISAK_MP
-    if(!_status.active) {
-        NSArray *weapons=[self bundledMW3Catalog][@"weapons"];
-        if(secondary) return value==1 || [weapons containsObject:@"mw3_usp45"];
-        return value==0 || value>=3 || [weapons containsObject:value==1 ? @"mw3_mp7" : @"mw3_acr"];
+    if(_status.active) {
+        if(secondary) return value==1 || _status.uspAvailable;
+        return value==0 || value>=3 || (value==1 ? _status.mp7Available : _status.acrAvailable);
     }
-    if(secondary) return value==1 || _status.uspAvailable;
-    return value==0 || value>=3 || (value==1 ? _status.mp7Available : _status.acrAvailable);
-#else
-    return secondary ? value==1 : value==0 || value>=3;
 #endif
+    NSArray *weapons=[self bundledMW3Catalog][@"weapons"];
+    if(secondary) return value==1 || [weapons containsObject:@"mw3_usp45"];
+    return value==0 || value>=3 || [weapons containsObject:value==1 ? @"mw3_mp7" : @"mw3_acr"];
 }
 
 - (BOOL)loadoutRankAvailable:(unsigned)value {
-#ifndef KISAK_MP
     return value==1 ? [self classRank]>=13 : value==2 ? [self classRank]>=14 : YES;
-#else
-    return value!=1 && value!=2;
-#endif
 }
 
 - (BOOL)loadoutPerkAvailable:(unsigned)value {
-#ifndef KISAK_MP
     return value==1 ? [self classRank]>=4 : value==2 ? [self classRank]>=6 : YES;
-#else
-    return value==0;
-#endif
 }
 
 - (void)renderClass {

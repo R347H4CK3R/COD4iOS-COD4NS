@@ -4,6 +4,7 @@ root=Path(__file__).resolve().parents[4]
 s=(root/'src/ui/ui_main.cpp').read_text()
 fn=s[s.index('int __cdecl UI_SetActiveMenu('):s.index('void __cdecl UI_DrawConnectScreen()')]
 leave=s[s.index('    if (!I_stricmp(out, "Leave"))'):s.index('    if (!I_stricmp(out, "closeingame"))')]
+playerStart=s[s.index("void UI_PlayerStart()\n"):s.index("void UI_LoadModsList()") ]
 stubs=r'''
 #include <cassert>
 #include <string>
@@ -31,7 +32,12 @@ const char *Dvar_GetString(const char*){return error;}
 void CL_StopControllerRumbles(){}
 void SND_FadeAllSounds(double,int){}
 bool UI_AutoContinue(){return false;}
-void UI_PlayerStart(){++progress;}
+void UI_PlayerStart();
+void CL_SetSkipRendering(int){}
+bool R_Cinematic_IsNextReady(){return false;}
+void R_Cinematic_StartNextPlayback(){}
+void R_Cinematic_StopPlayback(){}
+void KisakSurvival_GameplayReady(){++progress;}
 bool SaveMemory_IsRecentlyLoaded(){return false;}
 bool Menu_GetFocused(...){return false;}
 int I_stricmp(const char *a,const char *b){return std::string(a)==b ? 0 : 1;}
@@ -49,16 +55,18 @@ assert(opened.size()==1 && opened[0]=="error_popmenu");
 error=""; UI_SetActiveMenu(0,UIMENU_INGAME); assert(opened.back()=="pausedmenu" && paused==1);
 UI_SetActiveMenu(0,UIMENU_SAVE_LOADING); assert(opened.back()=="savegameloading");
 UI_SetActiveMenu(0,UIMENU_SAVEERROR); assert(opened.back()=="savegame_error");
-UI_SetActiveMenu(0,UIMENU_PREGAME); assert(opened.back()=="pregame");
+UI_SetActiveMenu(0,UIMENU_PREGAME); assert(progress==1 && catcher==0 && paused==0 && opened.empty());
+selected=false; UI_SetActiveMenu(0,UIMENU_PREGAME); assert(opened.back()=="pregame");
+selected=true;
 error="load failed"; UI_SetActiveMenu(0,UIMENU_PREGAME); assert(opened.back()=="pregame_loaderror");
-UI_SetActiveMenu(0,UIMENU_NONE); assert(opened.empty() && catcher==0 && paused==0 && clears==1);
+UI_SetActiveMenu(0,UIMENU_NONE); assert(opened.empty() && catcher==0 && paused==0 && clears==2);
 selected=false; error=""; UI_SetActiveMenu(0,UIMENU_MAIN); assert(opened.size()==1 && opened[0]=="main");
 error="failure"; UI_SetActiveMenu(0,UIMENU_MAIN); assert(opened.back()=="error_popmenu");
 }
 '''
 with tempfile.TemporaryDirectory() as directory:
  p=Path(directory); source=p/'menu.cpp'; exe=p/'menu.exe'
- source.write_text(stubs+fn+'void leaveMenu(const char *out, int localClientNum=0){\n'+leave+'}\n'+tests)
+ source.write_text(stubs+fn+playerStart+'void leaveMenu(const char *out, int localClientNum=0){\n'+leave+'}\n'+tests)
  subprocess.run(shlex.split(os.environ.get('CXX','clang++'))+['-std=c++17',str(source),'-o',str(exe)],check=True)
  subprocess.run([str(exe)],check=True)
 print('Production front end: Survival hides main; Campaign, errors, pause and progress preserved')

@@ -256,6 +256,10 @@ const char *KisakSurvival_LevelScript(const char *original) {
 }
 const char *KisakSurvival_SaveGameDirectory() { return selected() ? "mods/specops_survival/players" : "players"; }
 bool KisakSurvival_IsSelected() { return selected(); }
+void KisakSurvival_GameplayReady() {
+    if(!active || !selected()) return;
+    status.gameplayReady=true; publish();
+}
 bool KisakSurvival_UsesManualRetry() { return selected(); }
 void KisakSurvival_Shutdown() {
     status.shopOpen=false; syncPause(); upgrades.reset(); armory.reset(); rewards.reset(); heavyEnemies.fill(false);

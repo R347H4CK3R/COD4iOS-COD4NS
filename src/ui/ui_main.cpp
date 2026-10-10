@@ -1655,6 +1655,11 @@ void UI_PlayerStart()
         R_Cinematic_StartNextPlayback();
     else
         R_Cinematic_StopPlayback();
+#ifdef __APPLE__
+    // Session creation precedes server loading; only player start releases the native cover.
+    extern void KisakSurvival_GameplayReady();
+    KisakSurvival_GameplayReady();
+#endif
 }
 
 void UI_LoadModsList()
@@ -2546,6 +2551,17 @@ int __cdecl UI_SetActiveMenu(int localClientNum, uiMenuCommand_t menu)
         }
         break;
     case UIMENU_PREGAME:
+#ifdef __APPLE__
+        {
+            extern bool KisakSurvival_IsSelected();
+            if (KisakSurvival_IsSelected() && !*Dvar_GetString("com_errorMessage"))
+            {
+                UI_PlayerStart();
+                result = 1;
+                break;
+            }
+        }
+#endif
         if (UI_AutoContinue())
         {
             UI_PlayerStart();

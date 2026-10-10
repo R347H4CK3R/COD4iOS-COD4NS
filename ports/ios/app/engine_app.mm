@@ -461,7 +461,7 @@ static void *KISEngineThreadMain(void *argument)
     _wasSurvivalActive=status.active;
     if(_loadingCover.hidden) { if(status.active) _loadingDismissed=NO; return; }
     const auto result=kisak::loading::state(status.active,status.match.phase==Phase::Idle,
-                                            status.match.phase==Phase::GameOver,CACurrentMediaTime()-_loadingStarted);
+                                            status.match.phase==Phase::GameOver,status.gameplayReady,CACurrentMediaTime()-_loadingStarted);
     if(result==kisak::loading::Result::Ready || result==kisak::loading::Result::Failed) {
         _loadingCover.hidden=YES; [_loadingSpinner stopAnimating]; return;
     }

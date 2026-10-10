@@ -2,6 +2,7 @@
 struct gentity_s;
 const char *KisakSurvival_LevelScript(const char *original);
 void KisakSurvival_Begin();
+void KisakSurvival_GameplayReady();
 void KisakSurvival_Frame();
 void KisakSurvival_EnemyDied(gentity_s *enemy,gentity_s *attacker);
 void KisakSurvival_Removed(gentity_s *enemy);

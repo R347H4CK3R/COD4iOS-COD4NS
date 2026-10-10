@@ -6,7 +6,7 @@ namespace cod4ios::survival {
 enum class Action { OpenShop, CloseShop, Ammo, Armor, Rifle, Retry, Deposit, Withdraw, Pack, God, InfiniteAmmo, Money, NextWave, Revive, Recovery, FastReload, ACR, USP45, MP7 };
 struct Status {
     Snapshot match{Phase::Idle,0,0,0,0,0,0};
-    bool active=false, shopOpen=false;
+    bool active=false, shopOpen=false, gameplayReady=false;
     unsigned bestWave=0, armor=0;
     unsigned bank=0, xp=0, rank=1, packTier=0, map=0, difficulty=1, playerClass=0;
     bool godMode=false, infiniteAmmo=false;

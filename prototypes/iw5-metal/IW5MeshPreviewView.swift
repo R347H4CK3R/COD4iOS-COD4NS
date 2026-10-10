@@ -53,7 +53,7 @@ final class IW5MeshPreviewView: MTKView, MTKViewDelegate {
         delegate = self
     }
 
-    private var bounds = SIMD4<Float>(0, 0, 0, 1)
+    private var meshBounds = SIMD4<Float>(0, 0, 0, 1)
 
     func loadIWM1(url: URL) throws {
         guard let device = device else { throw NSError(domain: "IW5Preview", code: 1) }
@@ -83,7 +83,7 @@ final class IW5MeshPreviewView: MTKView, MTKViewDelegate {
             maxXY = max(maxXY, xy)
         }
         let extent = max(maxXY.x - minXY.x, maxXY.y - minXY.y)
-        bounds = SIMD4<Float>((minXY.x + maxXY.x) * 0.5,
+        meshBounds = SIMD4<Float>((minXY.x + maxXY.x) * 0.5,
                                (minXY.y + maxXY.y) * 0.5, 0,
                                extent > 0 ? 1.8 / extent : 1)
         meshBuffer = data.withUnsafeBytes { ptr -> MTLBuffer? in
@@ -101,7 +101,7 @@ final class IW5MeshPreviewView: MTKView, MTKViewDelegate {
               let enc = cmd.makeRenderCommandEncoder(descriptor: pass) else { return }
         enc.setRenderPipelineState(pipeline)
         enc.setVertexBuffer(meshBuffer, offset: 0, index: 0)
-        var state = bounds
+        var state = meshBounds
         enc.setVertexBytes(&state, length: MemoryLayout<SIMD4<Float>>.stride, index: 1)
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
         enc.endEncoding()

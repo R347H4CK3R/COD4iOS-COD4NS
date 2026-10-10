@@ -91,3 +91,12 @@ This is a repeatable **compression-layer** milestone, not asset linking, world c
 - `tools/iw5/audit_installation.py` now supports read-only bulk validation and reporting.
 - `verify_fastfiles.py` distinguishes the alternate container rather than trying to parse it using the zlib offset for `IWffu100`. A later PC fetch still returned prior version due to apparent cache lag; revised status path not yet verified locally.
 - Next engineering task is to identify and implement lawful, clean IWff0100 parsing. Both archive types need asset-graph decoding before real MW3 gameplay can load.
+
+## Full fastfile audit — October 10, 2026 (verified on PC)
+Using the current GitHub source copied directly to the machine (avoiding stale raw-content caching), the read-only audit completed across **226** archives:
+- **115** `IWffu100` files decoded to a complete zlib end-of-stream under the 256 MiB per-file safety cap.
+- **99** `IWff0100` files correctly identified as an alternate, unsupported container, heavily concentrated in multiplayer assets. Not decoded.
+- **12** files reached the 256 MiB decompression safety limit. These are **size-limit stops, not evidence of corrupt files**; they include campaign archives and need not be prioritized for the campaign-excluded project.
+- Report written on authorized Windows machine under the user's temporary directory: `mw3_iw5_full_audit.json` (contains only metadata, hashes, filenames, no extracted retail payloads).
+
+**Priority changed by evidence:** Full MW3 multiplayer requires a separate `IWff0100` fastfile implementation. Survival/Spec Ops `IWffu100` zlib container decoding is more mature, but map assets/runtime functionality remain unimplemented. Do not interpret an archive decompression pass as an executable native game.

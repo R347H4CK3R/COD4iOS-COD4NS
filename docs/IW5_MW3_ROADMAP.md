@@ -156,3 +156,9 @@ Interpretation: this validates limited portable *model/texture file export*, not
 - New `prototypes/iw5-metal/IW5MeshPreviewView.swift` contains a native MTKView renderer and IWM1 buffer parser. It is an **unbuilt source prototype**, orthographic geometry preview only, no textures or animations.
 - No extracted retail mesh files are committed; test outputs remain in Windows temp workspace.
 - **Next gate:** compile and run the viewer under macOS/Xcode on ARM64 iOS and visually confirm a converted model. After that, material/texture import, camera perspective and world geometry support.
+
+## GitHub ARM64 iOS compilation — October 10, 2026
+- Added standalone iOS entry point `prototypes/iw5-metal/ViewerAppDelegate.swift` and GitHub CI workflow `.github/workflows/iw5-metal-compile.yml`.
+- First CI run #38057858642 failed due to Swift `bounds` naming collision with `UIView.bounds`; corrected property name to `meshBounds`.
+- Subsequent CI run **#38057937322**, commit `63d8861`: **completed success**, confirming the standalone Metal viewer Swift sources type-check under the actual ARM64 iPhoneOS SDK on macOS GitHub Actions.
+- This is **typecheck only**, not full link/IPA packaging, device installation, texture-rendering verification, or running MW3 gameplay. No retail MW3 models shipped in CI.

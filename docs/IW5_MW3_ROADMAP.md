@@ -63,3 +63,5 @@ These results distinguish the user's *x86-era* installed content from the x64 re
 - Reference: https://github.com/Laupetin/OpenAssetTools/blob/main/docs/SupportedAssetTypes.md
 
 **Next priority:** verify full archive decompression and indexed asset names with OAT's Unlinker on a small zone. Then design native IW5 world/collision/script runtime; do not silently replace the requested full mode parity with a limited reimagining.
+
+- **Full compressed stream test:** The Dome Survival file's zlib stream beginning at offset 21 reached end-of-stream successfully, decompressing **3,322,009 bytes** from the 759,407-byte fastfile. This validates complete zlib stream decoding but **does not** validate the higher-level asset graph, scripts, collision, or actual map loading.

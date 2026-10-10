@@ -21,7 +21,7 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
         }
     }
     NSString *root=[documents stringByAppendingPathComponent:@"mods/specops_survival"];
-    for(NSString *relative in @[@"maps/specops_survival.gsc", @"maps/specops_survival_v2.gsc"]) {
+    for(NSString *relative in @[@"maps/specops_survival.gsc", @"maps/specops_survival_v2.gsc", @"maps/specops_survival_v3.gsc"]) {
     NSString *destination=[root stringByAppendingPathComponent:relative];
     NSDictionary *destinationAttributes=[files attributesOfItemAtPath:destination error:NULL];
     if([destinationAttributes[NSFileType] isEqualToString:NSFileTypeSymbolicLink]) {
@@ -198,7 +198,7 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     _screen=screen; _choosingMode=NO;
     if(screen==3) [self panelTitle:@"Survival Bank" detail:@"Transfers use match credits. Bank persists between matches." choices:@[@"Deposit 500",@"Deposit 1000",@"Deposit all",@"Withdraw 500",@"Withdraw 1000",@"Withdraw all",@"Back"]];
     else if(screen==4) [self panelTitle:@"Survival Cheats" detail:@"Cheats apply only to this Survival match." choices:@[@"Toggle invulnerability",@"Toggle infinite ammo",@"Add 10000 credits",@"Skip current wave",@"Back"]];
-    else if(screen==5) [self panelTitle:@"Weapon Armory" detail:@"Refill, replace or upgrade your held weapon." choices:@[@"Refill ammo - 250",@"AK-47 - 750",@"Pack-a-Punch - 2000 / 4000 / 6000",@"Back"]];
+    else if(screen==5) [self panelTitle:@"Weapon Armory" detail:@"MW3 ACR requires its converted asset pack. Original game files stay intact." choices:@[@"Refill ammo - 250",@"AK-47 - 750",@"MW3 ACR - converted pack required",@"Pack-a-Punch - 2000 / 4000 / 6000",@"Back"]];
     else if(screen==6) [self panelTitle:@"Equipment Armory" detail:@"Protection for the next fight." choices:@[@"Armor (100 points) - 500",@"Revive protection - 1500 (rank 2)",@"Quick Recovery - 2000 (rank 4)",@"Sleight of Hand - 2500 (rank 6)",@"Back"]];
     else if(screen==7) [self panelTitle:@"Survival Extras" detail:@"Persistent bank and match cheats." choices:@[@"Bank",@"Cheats",@"Back"]];
     else [self panelTitle:@"Survival Armory" detail:@"Opening shop..." choices:@[@"Weapon Armory",@"Equipment Armory",@"Extras",@"Setup (new match)",@"Close shop"]];
@@ -251,7 +251,7 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     using namespace cod4ios::survival;
     if(_screen==2 && index==4) { queueAction(Action::CloseShop,_status.epoch); [self clearPanel]; return; }
     if((_screen==3 && index==6) || (_screen==4 && index==4)) { [self renderShop:7]; return; }
-    if((_screen==5 && index==3) || (_screen==6 && index==4) || (_screen==7 && index==2)) { [self renderShop:2]; return; }
+    if((_screen==5 && index==4) || (_screen==6 && index==4) || (_screen==7 && index==2)) { [self renderShop:2]; return; }
     if(_screen==2) {
         if(index==3) {
             if(!_status.shopOpen) { _detail.text=@"Shop opening is pending. Please wait."; _actionPendingUntil=NSDate.timeIntervalSinceReferenceDate+.35; return; }
@@ -262,7 +262,17 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     if(_screen==7) { [self renderShop:index==0 ? 3 : 4]; return; }
     if(!_status.shopOpen) { _detail.text=@"Shop opening is pending. Please wait."; _actionPendingUntil=NSDate.timeIntervalSinceReferenceDate+.35; return; }
     Action action=Action::Ammo; unsigned amount=0;
-    if(_screen==5) action=index==0 ? Action::Ammo : index==1 ? Action::Rifle : Action::Pack;
+    if(_screen==5) {
+        if(index==2 && !_status.acrAvailable) {
+            _detail.text=@"The converted MW3 ACR asset pack is not loaded.";
+            _actionPendingUntil=NSDate.timeIntervalSinceReferenceDate+1; return;
+        }
+        if(index==2 && _status.rank<importedAcrRank) {
+            _detail.text=@"MW3 ACR unlocks at rank 14.";
+            _actionPendingUntil=NSDate.timeIntervalSinceReferenceDate+1; return;
+        }
+        action=index==0 ? Action::Ammo : index==1 ? Action::Rifle : index==2 ? Action::ACR : Action::Pack;
+    }
     else if(_screen==6) {
         if(index==1 && (_status.reviveReady || _status.rank<2)) {
             _detail.text=_status.reviveReady ? @"Revive protection is already ready." : @"Revive protection unlocks at rank 2.";
@@ -326,6 +336,7 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
             else if(_screen==4) _detail.text=[NSString stringWithFormat:@"Wallet %u - God %@ - Infinite ammo %@\n%@",s.credits,_status.godMode ? @"ON" : @"OFF",_status.infiniteAmmo ? @"ON" : @"OFF",response];
             else _detail.text=[NSString stringWithFormat:@"Wallet %u - Bank %u - Rank %u (%u XP)\nHeld weapon Pack tier %u / 3 - Streak %u\nSupply rewards: 5 ammo / 8 armor / 12 cash 1000\n%@",s.credits,_status.bank,_status.rank,_status.xp,_status.packTier,_status.killstreak,response];
         }
+        if(_screen==5 && _choices.count>=5) [_choices[2] setTitle:!_status.acrAvailable ? @"MW3 ACR - converted pack required" : _status.rank<importedAcrRank ? @"MW3 ACR - LOCKED (rank 14)" : @"MW3 ACR - 3000" forState:UIControlStateNormal];
         if(_screen==6 && _choices.count>=4) {
             NSString *revive=_status.reviveReady ? @"Revive protection - READY" : _status.rank<2 ? @"Revive protection - LOCKED (rank 2)" : @"Revive protection - 1500";
             NSString *recovery=_status.quickRecovery ? @"Quick Recovery - ACTIVE" : _status.rank<4 ? @"Quick Recovery - LOCKED (rank 4)" : @"Quick Recovery - 2000";

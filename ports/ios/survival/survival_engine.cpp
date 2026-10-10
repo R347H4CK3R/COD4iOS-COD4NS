@@ -70,6 +70,8 @@ void profileStatus() {
     status.packTier=g_entities[0].client ? upgrades.tier(g_entities[0].client->ps.weapon) : 0;
     status.reviveReady=armory.reviveReady(); status.quickRecovery=armory.recoveryEnabled();
     status.fastReload=armory.fastReloadEnabled(); status.killstreak=killstreaks.count();
+    const unsigned acr=BG_FindWeaponIndexForName("mw3_acr");
+    status.acrAvailable=acr>0 && acr<128 && acr<BG_GetNumWeapons();
 }
 void persistProfile() { KisakApple_StoreSurvivalProgress(profile.bank,profile.xp); profileStatus(); }
 void updateRecovery(int now) {
@@ -104,7 +106,7 @@ bool grant(Purchase item) {
         }
         return changed;
     }
-    const unsigned rifle=BG_FindWeaponIndexForName("ak47");
+    const unsigned rifle=BG_FindWeaponIndexForName(item==Purchase::ACR ? "mw3_acr" : "ak47");
     if(!rifle || rifle>=128 || (ps.weapons[rifle>>5] & (1u<<(rifle&31)))) return false;
     if(!G_GivePlayerWeapon(&ps,rifle,0)) return false;
     Add_Ammo(player,rifle,0,999,1);
@@ -128,8 +130,11 @@ void processActions() {
         if(!status.shopOpen) { message("Open Shop before purchasing or using the bank."); continue; }
         bool success=false;
         switch(request.action) {
-        case Action::Ammo: case Action::Armor: case Action::Rifle: {
-            const Purchase item=request.action==Action::Ammo ? Purchase::Ammo : request.action==Action::Armor ? Purchase::Armor : Purchase::Rifle;
+        case Action::Ammo: case Action::Armor: case Action::Rifle: case Action::ACR: {
+            if(request.action==Action::ACR && rankForXP(profile.xp)<importedAcrRank) {
+                message("MW3 ACR unlocks at rank 14."); continue;
+            }
+            const Purchase item=request.action==Action::Ammo ? Purchase::Ammo : request.action==Action::Armor ? Purchase::Armor : request.action==Action::ACR ? Purchase::ACR : Purchase::Rifle;
             success=runtime.session().tryPurchase(item,[&]{return grant(item);}); break;
         }
         case Action::Deposit: success=deposit(runtime.session(),profile,request.amount); if(success) persistProfile(); break;
@@ -183,8 +188,19 @@ void processActions() {
 
 }
 
+bool importedAcrAssetPresent() {
+    bool found=false;
+    DB_EnumXAssets(ASSET_TYPE_WEAPON,[](XAssetHeader header,void *context){
+        if(header.weapon && header.weapon->szInternalName && !std::strcmp(header.weapon->szInternalName,"mw3_acr"))
+            *static_cast<bool*>(context)=true;
+    },&found,false);
+    return found;
+}
 const char *KisakSurvival_LevelScript(const char *original) {
-    return selected() ? "maps/specops_survival_v2" : original;
+    if(!selected()) return original;
+    // Enumerate existing records without creating a missing/default weapon.
+    Dvar_SetIntByName("kisak_survival_acr",importedAcrAssetPresent() ? 1 : 0);
+    return "maps/specops_survival_v3";
 }
 const char *KisakSurvival_SaveGameDirectory() { return selected() ? "mods/specops_survival/players" : "players"; }
 bool KisakSurvival_IsSelected() { return selected(); }

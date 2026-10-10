@@ -61,6 +61,7 @@ int main() {
  g_entities[0].client=&client;
  runtime.begin(); runtime.tick(3); runtime.session().addCredits(20000); publish();
  action(Action::OpenShop); assert(status.shopOpen && pauseValue.current.integer==1);
+ action(Action::ACR); assert(runtime.session().snapshot().credits==20000);
  action(Action::Revive); assert(!armory.reviveReady() && runtime.session().snapshot().credits==20000);
  profile.xp=1500; action(Action::Revive); action(Action::Recovery);
  assert(armory.reviveReady() && armory.recoveryEnabled() && runtime.session().snapshot().credits==16500);
@@ -124,6 +125,9 @@ int main() {
  assert(supplyGrants==1 && status.armor==100 && runtime.session().snapshot().credits==2400);
  assert(runtime.reserve(1)); assert(runtime.spawned(1,++generations[1]));
  KisakSurvival_Removed(&enemy); assert(killstreaks.count()==12 && runtime.session().snapshot().credits==2400);
+ action(Action::OpenShop); runtime.session().addCredits(1000); profile.xp=6500;
+ grantWorks=false; action(Action::ACR); assert(runtime.session().snapshot().credits==3400);
+ grantWorks=true; action(Action::ACR); assert(runtime.session().snapshot().credits==400);
 }
 '''
 code=stubs+extract('void syncPause()')+extract('void updateRecovery(')+extract('void processActions()')+extract('bool KisakSurvival_Invulnerable(')+extract('int KisakSurvival_ModifyDamage(')+extract('int KisakSurvival_AbsorbDamage(')+extract('int KisakSurvival_ReloadDuration(')+extract('void KisakSurvival_EnemyDied(')+extract('void KisakSurvival_Removed(')+tests

@@ -2,6 +2,8 @@
 #include <algorithm>
 namespace cod4ios::survival {
 constexpr unsigned maxProgress=1000000000u;
+// Original MW3 armory row uses zero-based rank 13; this UI displays rank + 1.
+constexpr unsigned importedAcrRank=14;
 enum class Map : unsigned { Bog, BogContinuation, Ambush, Blackout, Armada };
 enum class Difficulty : unsigned { Recruit, Regular, Hardened, Veteran };
 enum class PlayerClass : unsigned { Assault, Raider, Armored };

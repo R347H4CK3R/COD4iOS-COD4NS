@@ -9,12 +9,13 @@
 
 namespace cod4ios::survival {
 enum class Phase { Idle, Intermission, Fighting, GameOver };
-enum class Purchase { Ammo, Armor, Rifle };
+enum class Purchase { Ammo, Armor, Rifle, ACR };
 constexpr unsigned price(Purchase item) {
   switch(item) {
     case Purchase::Ammo: return 250;
     case Purchase::Armor: return 500;
     case Purchase::Rifle: return 750;
+    case Purchase::ACR: return 3000;
   }
   return 0;
 }

@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 namespace cod4ios::survival {
-enum class Action { OpenShop, CloseShop, Ammo, Armor, Rifle, Retry, Deposit, Withdraw, Pack, God, InfiniteAmmo, Money, NextWave, Revive, Recovery, FastReload };
+enum class Action { OpenShop, CloseShop, Ammo, Armor, Rifle, Retry, Deposit, Withdraw, Pack, God, InfiniteAmmo, Money, NextWave, Revive, Recovery, FastReload, ACR };
 struct Status {
     Snapshot match{Phase::Idle,0,0,0,0,0,0};
     bool active=false, shopOpen=false;
@@ -12,6 +12,7 @@ struct Status {
     bool godMode=false, infiniteAmmo=false;
     bool reviveReady=false, quickRecovery=false, fastReload=false;
     unsigned killstreak=0;
+    bool acrAvailable=false;
     std::uint64_t noticeSerial=0;
     std::uint64_t epoch=0;
     char message[192]{};

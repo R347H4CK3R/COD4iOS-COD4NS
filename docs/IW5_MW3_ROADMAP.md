@@ -100,3 +100,11 @@ Using the current GitHub source copied directly to the machine (avoiding stale r
 - Report written on authorized Windows machine under the user's temporary directory: `mw3_iw5_full_audit.json` (contains only metadata, hashes, filenames, no extracted retail payloads).
 
 **Priority changed by evidence:** Full MW3 multiplayer requires a separate `IWff0100` fastfile implementation. Survival/Spec Ops `IWffu100` zlib container decoding is more mature, but map assets/runtime functionality remain unimplemented. Do not interpret an archive decompression pass as an executable native game.
+
+## Signed IW5 multiplayer header inspection (verified October 10, 2026)
+A read-only header inspector committed at `tools/iw5/inspect_signed_headers.py` ran successfully on three original PC files:
+- `zone/english/mp_dome.ff`: 60,383,253 bytes; outer `IWff0100`, LE version 1, inner `IWffs100` at offset 21.
+- `zone/english/common_mp.ff`: 49,291,285 bytes; identical marker offsets/version.
+- `zone/dlc/mp_boardwalk.ff`: 80,379,925 bytes; identical marker offsets/version.
+
+Published signed MW2 PC authed-chunk work in `primetime43/CoD-FF-Tools` documents a similar outer/inner header arrangement, but **that alone does not prove identical IW5 chunk arrangement or authentication rules**. Test the signed reader in OpenAssetTools against a local IW5 file and compare decoded sizes/hashes to establish correctness. No decryption or asset extraction was performed in this header inspection.

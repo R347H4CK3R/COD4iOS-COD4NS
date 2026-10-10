@@ -78,3 +78,73 @@ does not depend on observing its process. Retaining material names, texture/UV
 mapping and static models would enable faithful visual rendering. A playable
 port additionally requires IW5 collision/MapEnts/navigation conversion and
 native map-registration integration; rendering this mesh cannot supply those.
+
+## Collision and Survival-overlay research milestone
+
+Two additional bounded extractors recover source collision primitives and
+navigation rather than generating approximate collision from the render mesh:
+
+```powershell
+python -B tools/mw3_maps/export_oat_collision.py --unlinker ../oat/Unlinker.exe --fastfile 'C:/Program Files (x86)/Call of Duty Modern Warfare 3/zone/english/mp_dome.ff' --output-dir ../mw3-maps/dome-collision
+python -B tools/mw3_maps/export_oat_navigation.py --unlinker ../oat/Unlinker.exe --fastfile 'C:/Program Files (x86)/Call of Duty Modern Warfare 3/zone/english/so_survival_mp_dome.ff' --output-dir ../mw3-maps/dome-navigation
+python -B tools/mw3_maps/test_export_oat_collision.py
+python -B tools/mw3_maps/test_export_oat_navigation.py
+```
+
+Both require fresh output directories and the same Windows/OAT capture
+conditions as the render-world extractor. JSON contains no process pointers.
+Coordinates, distances, counts, array ranges, material references, brush plane
+references and navigation targets are validated before output. Tests are
+synthetic and cover malformed/truncated records, pointers, limits, NaN/infinity,
+wrong identity and ambiguous matching assets.
+
+Verified local retail results:
+
+| Source | Output | Verified counts |
+| --- | --- | --- |
+| `mp_dome.ff` | `collision.iw5.json` | 10,902 vertices; 18,174 triangles; 13,005 planes; 29,440 nonaxial brush sides; 7,087 brushes |
+| `mp_dome.ff` | `entities.iw5.txt` | 148,496 bytes, exactly matching OAT's built-in MapEnts dumper |
+| `so_survival_mp_dome.ff` | `path.iw5.json` | 511 nodes; 3,833 directed links, each pointing to a valid node |
+| `so_survival_mp_dome.ff` | `addon-entities.iw5.txt` | 30,733 bytes, exactly matching OAT's built-in AddonMapEnts dumper |
+| `so_survival_mp_dome.ff` | `addon-metadata.json` | Additional ClipInfo is present; 53 additional submodels |
+
+Repeated independent OAT captures produced byte-identical collision JSON and
+navigation JSON. Entity and addon text are unchanged source bytes, with only
+their terminal NUL omitted as OAT's own dumpers do. They contain **numeric IW5
+entity keys**, not COD4 textual keys; the extractors intentionally do not guess
+the key dictionary. Base `mp_dome.ff` has no listed PathData asset. The Survival
+overlay supplies PathData and AddonMapEnts, so both fastfiles are necessary for
+this milestone.
+
+Collision JSON preserves source triangle lists, four-float plane equations,
+side-to-plane/material references and brushes' side ranges, original midpoint /
+half-size bounds, six axial material numbers, contents and glass-piece index.
+It omits acceleration trees, partition metadata, walkable edges, adjacency
+arrays, material names/flags, static-model collision, triggers, submodels and
+dynamic entities. It is **not a complete traceable clipmap**.
+
+Navigation JSON preserves node type, spawn flags, source position/angle, source
+error code and directed links with distance, flags, disconnect count and
+negotiation-link byte. Script-string name resolution, animscript functions,
+visibility, spatial trees, chain maps, overlap nodes and runtime state are
+omitted. Addon collision/trigger/submodel records are detected but not exported.
+
+Compiled x86 offset checks against the same OAT commit establish:
+
+- `clipMap_t` is 256 bytes; inline `ClipInfo` is 64 bytes at offset 8.
+  Collision vertex count/pointer are at 100/104, triangle count/pointer at
+  108/112 and linked MapEnts at 152. Planes/sides/brushes use strides 20/8/36;
+  brush bounds use stride 24.
+- `PathData` is 44 bytes; node count/pointer are at 4/8. Nodes use stride 136;
+  constant origin/angle/link count/link pointer are at 20/32/56/60. Links use
+  stride 12. Runtime node portions are not exported.
+- `AddonMapEnts` is 52 bytes; text pointer/count are at 4/8; ClipInfo pointer
+  and additional submodel count are at 36/40.
+
+The IW5 and IW3 structures differ: IW5 groups brush data in ClipInfo and stores
+brush bounds/contents separately, and its collision partitions have an extra
+vertex-segment byte. A real conversion must reconstruct IW3 structures and
+their tracing dependencies, resolve entity tokens, convert overlay collision
+and trigger records, resolve navigation script strings, and adapt entity/script
+semantics before native registration. These tools enable research into those
+steps; they do not enable a selectable or playable Dome map.

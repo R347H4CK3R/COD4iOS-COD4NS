@@ -20,7 +20,7 @@ jobs:
           $repl = '${1}if (params.size() == 2)${2}params.get(1)'
           $updated = [regex]::Replace($src, $pattern, $repl)
           if ($updated -eq $src) { throw 'Map command patch failed to match upstream source' }
-          Set-Content $file $updated
+          [System.IO.File]::WriteAllText((Resolve-Path $file), $updated)
           git -C iw5xport diff --check
       - uses: microsoft/setup-msbuild@v2
       - name: Generate Visual Studio solution

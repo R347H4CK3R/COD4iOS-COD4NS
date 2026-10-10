@@ -132,6 +132,18 @@ int main() {
  action(Action::OpenShop); runtime.session().addCredits(1000); profile.xp=6500;
  grantWorks=false; action(Action::ACR); assert(runtime.session().snapshot().credits==3400);
  grantWorks=true; action(Action::ACR); assert(runtime.session().snapshot().credits==400);
+ // Completing a whole wave awards XP once per tracked kill, including the last.
+ runtime.begin(); runtime.tick(3); killstreaks.reset(); rewards.reset(); rewards.beginWave(1);
+ const unsigned oldXP=profile.xp, startingXP=mw3XP;
+ unsigned kills=0;
+ while(runtime.session().snapshot().phase==Phase::Fighting) {
+   assert(runtime.reserve(1)); assert(runtime.spawned(1,++generations[1]));
+   KisakSurvival_EnemyDied(&enemy,&g_entities[0]); ++kills; runtime.tick(0.001);
+ }
+ assert(runtime.session().snapshot().phase==Phase::Intermission);
+ assert(mw3XP==startingXP+kills*125 && profile.xp==oldXP && killstreaks.count()==kills);
+ KisakSurvival_EnemyDied(&enemy,&g_entities[0]);
+ assert(mw3XP==startingXP+kills*125);
 }
 '''
 code=stubs+extract('void syncPause()')+extract('void updateRecovery(')+extract('void processActions()')+extract('bool KisakSurvival_Invulnerable(')+extract('int KisakSurvival_ModifyDamage(')+extract('int KisakSurvival_AbsorbDamage(')+extract('int KisakSurvival_ReloadDuration(')+extract('void KisakSurvival_EnemyDied(')+extract('void KisakSurvival_Removed(')+tests

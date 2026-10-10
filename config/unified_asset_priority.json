@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "policy": "mw3_preferred",
+  "scope": ["multiplayer", "special_ops", "shared"],
+  "priority": ["mw3", "cod4"],
+  "rules": {
+    "same_logical_asset": "prefer_mw3",
+    "mw3_only": "include",
+    "cod4_only": "include",
+    "same_name_different_asset_type": "keep_both_namespaced_and_flag",
+    "incompatible_engine_format": "convert_and_verify_before_replacement",
+    "missing_dependencies": "block_replacement_and_report",
+    "failed_conversion_or_runtime_test": "retain_last_known_good_and_report",
+    "destructive_overwrite_of_original_game_files": false,
+    "asset_bundle_overwrite": "only_in_generated_private_build_staging",
+    "public_repository_proprietary_assets": false
+  },
+  "deduplication": {
+    "key": "logical_asset_id+asset_type",
+    "retain_original_provenance": true,
+    "content_hash_verification": "sha256",
+    "build_manifest": "resolved_assets.json",
+    "conflict_log": "asset_conflicts.json"
+  },
+  "exception_policy": "allow explicit per-asset COD4 fallback only when MW3 counterpart fails conversion, dependency, compatibility, or runtime checks",
+  "menu_categories": ["Multiplayer", "Special Ops"]
+}

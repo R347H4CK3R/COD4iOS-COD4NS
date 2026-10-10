@@ -108,3 +108,13 @@ A read-only header inspector committed at `tools/iw5/inspect_signed_headers.py` 
 - `zone/dlc/mp_boardwalk.ff`: 80,379,925 bytes; identical marker offsets/version.
 
 Published signed MW2 PC authed-chunk work in `primetime43/CoD-FF-Tools` documents a similar outer/inner header arrangement, but **that alone does not prove identical IW5 chunk arrangement or authentication rules**. Test the signed reader in OpenAssetTools against a local IW5 file and compare decoded sizes/hashes to establish correctness. No decryption or asset extraction was performed in this header inspection.
+
+## Completed: OpenAssetTools signed IW5 parsing verification
+- Official prebuilt `Laupetin/OpenAssetTools` release **v0.33.0** downloaded to Windows temporary workspace. Its `Unlinker.exe --help` and `--list` options were verified.
+- **`zone/english/mp_dome.ff`**: Unlinker recognized `IW5`, enumerated assets and ended with **0 warnings, 0 errors, exit 0**.
+- **`zone/dlc/mp_boardwalk.ff`**: Unlinker listed signed DLC assets, **7,526 output lines**, **0 warnings, 0 errors, exit 0**.
+- **`zone/english/so_survival_mp_dome.ff`**: Unlinker listed Survival assets, **2,446 output lines**, **0 warnings, 0 errors, exit 0**.
+- A repeatable validation script is committed at `tools/iw5/verify_oat_list.ps1`. The three equivalent manual commands were verified directly; the combined script was not independently verified because remote script invocation was blocked.
+- This **resolves basic signed container and asset-list reading** for sampled files using OAT: it does **not** validate full world reconstruction, collision/pathfinding, script execution, rendering, model/material completeness, multiplayer networking, or iOS integration.
+- License consideration: OAT is GPLv3; review licensing obligations before importing any source into COD4iOS. A separate PC-side build tool can avoid linking its source to an iOS binary.
+- Original retail files remain untouched; no retail assets committed to public GitHub.

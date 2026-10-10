@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "project": "MW3-inspired multiplayer gameplay for COD4/iOS",
+  "legal": "Do not commit proprietary Activision game binaries or assets; references below are design targets, not extracted assets.",
+  "engine_baseline": "COD4 IW3",
+  "systems": [
+    {"id":"weapons","extract":["weapon definitions","weapon variants","animation references","model references","sound references","attachments"],"convert":["damage/range","spread/recoil","fire modes","ammo/reload","ADS","attachments"],"verify":["load","fire","ADS","reload","switch","controller/touch controls"],"status":"inventory_pending"},
+    {"id":"perks","extract":["multiplayer perk definitions and menu metadata"],"convert":["effect hooks","perk slot rules","Pro upgrades"],"verify":["effect behavior","stacking","spawn/reset"],"status":"design_pending"},
+    {"id":"lethals","extract":["equipment class references","visual and sound references"],"convert":["deployment","damage and trigger rules","limits"],"verify":["deploy","detonate","pickup interactions"],"status":"design_pending"},
+    {"id":"tacticals","extract":["equipment class references","effect references"],"convert":["duration","radius","player-state effects","immunity interactions"],"verify":["deploy","effect","expire","counter-perks"],"status":"design_pending"},
+    {"id":"killstreaks","extract":["reward declarations","model and effect references"],"convert":["earn conditions","selection","activation","AI or scripted behavior"],"verify":["earn","activate","timeout","death/reset"],"status":"design_pending"},
+    {"id":"strike_packages","extract":["assault/support/specialist rules"],"convert":["streak persistence","award tables","specialist perks"],"verify":["progression","death handling","class changes"],"status":"design_pending"},
+    {"id":"custom_classes","extract":["loadout menu metadata"],"convert":["primary/secondary","attachments","proficiency","lethal/tactical","perk slots","streak choices"],"verify":["save/load","class change","spawn loadout"],"status":"design_pending"}
+  ],
+  "pipelines":{
+    "maps":"C2M map export -> OBJ and map validation -> IW3 conversion -> map build -> game test",
+    "gameplay":"private asset inventory -> per-category semantic conversion -> original gameplay implementation as needed -> IW3 mod scripts/assets -> game test -> iOS adaptation"
+  },
+  "gates":["MW3 licensing resolved for live export (or legitimate offline resources)","asset inventory validated","functional gameplay tests on Windows COD4","native iOS feature test"],
+  "done_definition":"No system marked complete without runtime functionality verified on Windows and iOS."
+}

@@ -14,7 +14,7 @@ def inspect(path):
     out={"name":path.name,"size":path.stat().st_size,"magic":b[:8].decode("ascii","replace"),
          "version_le":struct.unpack_from("<I",b,8)[0] if len(b)>=12 else None,
          "inner_stream_magic_offset":b.find(b"IWffs100",12),
-         "inner_stream_magic":b" IWffs100" in b}
+         "inner_stream_magic": False}
     out["inner_stream_magic"]=out["inner_stream_magic_offset"]>=0
     if len(b)>=21:
         out["preamble_hex"]=b[12:21].hex()

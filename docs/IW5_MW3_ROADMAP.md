@@ -118,3 +118,10 @@ Published signed MW2 PC authed-chunk work in `primetime43/CoD-FF-Tools` document
 - This **resolves basic signed container and asset-list reading** for sampled files using OAT: it does **not** validate full world reconstruction, collision/pathfinding, script execution, rendering, model/material completeness, multiplayer networking, or iOS integration.
 - License consideration: OAT is GPLv3; review licensing obligations before importing any source into COD4iOS. A separate PC-side build tool can avoid linking its source to an iOS binary.
 - Original retail files remain untouched; no retail assets committed to public GitHub.
+
+## Supported IW5 asset extraction milestone — verified
+OpenAssetTools v0.33.0 `Unlinker.exe` was run on the Windows PC against `zone/english/so_survival_mp_dome.ff` using `--include-assets rawfile` and a separate temporary output folder. It finished with zero warnings/errors, exit 0. Outputs: `zone_source/so_survival_mp_dome.zone` (110,312 bytes), `vision/so_survival_mp_dome.vision` (602 bytes), and an empty `so_survival_mp_dome` rawfile.
+
+`tools/iw5/summarize_zone.py` was committed and executed against this exported zone file; it reported **2,387** distinct asset declarations across **22** resource categories and zero malformed lines. Key types: 1,404 pixelshader, 321 vertexshader, 265 loadedsound, 168 sound, 103 techniqueset, 33 image, 29 material, 16 xmodelsurfs, 6 xmodel, 6 scriptfile, 1 pathdata, 1 physcollmap and 1 addonmapents. Tool includes only type/count metadata and writes summaries to private PC temporary workspace.
+
+**Interpretation:** Asset declarations can be enumerated reproducibly, but only rawfile content was actually exported in this test; world, collision, pathfinding, scripting and renderer data have **not** been successfully exported as working iOS resources. Next required engineering is resource-by-resource format/loader implementation, including resolving dependencies against shared and multiplayer zone files.

@@ -125,3 +125,13 @@ OpenAssetTools v0.33.0 `Unlinker.exe` was run on the Windows PC against `zone/en
 `tools/iw5/summarize_zone.py` was committed and executed against this exported zone file; it reported **2,387** distinct asset declarations across **22** resource categories and zero malformed lines. Key types: 1,404 pixelshader, 321 vertexshader, 265 loadedsound, 168 sound, 103 techniqueset, 33 image, 29 material, 16 xmodelsurfs, 6 xmodel, 6 scriptfile, 1 pathdata, 1 physcollmap and 1 addonmapents. Tool includes only type/count metadata and writes summaries to private PC temporary workspace.
 
 **Interpretation:** Asset declarations can be enumerated reproducibly, but only rawfile content was actually exported in this test; world, collision, pathfinding, scripting and renderer data have **not** been successfully exported as working iOS resources. Next required engineering is resource-by-resource format/loader implementation, including resolving dependencies against shared and multiplayer zone files.
+
+## IW5 model / texture extraction milestone — PC verified
+OpenAssetTools v0.33.0 was used in a temporary private workspace, with original MW3 Survival Dome archive unchanged:
+- `--include-assets xmodel --model-format GLTF`: exported **6 XModels** into **16 glTF files** across LODs, with **0 warnings, 0 errors, exit 0**.
+- glTF JSON validation: **16 valid JSON files**, **68 mesh entries** and **513 node entries**; first dependency validation identified **26 missing image file references**.
+- `--include-assets image --image-format DDS` targeting the same output directory: **32 DDS images** exported, **0 warnings, 0 errors, exit 0**.
+- After DDS export: **3 unresolved image references**, all for `../images/$identitynormalmap.dds` in three Hellfire missile LOD glTFs. This is a default-engine texture name present as IWI within the installed shared asset archives, not proof of a broken model. Correct runtime fallback/texture conversion remains required.
+- `tools/iw5/validate_gltf.py` committed for reproducible dependency checks. Private extracted retail assets were **not** uploaded to GitHub.
+
+Interpretation: this validates limited portable *model/texture file export*, not a rendered iOS game world. Critical gaps remain: full world geometry, player collision, animations, shaders/material conversion to Metal, script VM and networked MW3 gameplay.

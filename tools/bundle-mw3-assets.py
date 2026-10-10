@@ -28,7 +28,9 @@ def bundle(ipa, assets, output):
         if source.testzip() is not None:
             raise ValueError('Input IPA is corrupt')
         names = source.namelist()
-        if b'MW3Assets.json' not in source.read('Payload/KisakCOD.app/KisakCOD'):
+        engine_paths = ['Payload/KisakCOD.app/Frameworks/libkisakcod_sp.dylib',
+                        'Payload/KisakCOD.app/Frameworks/libkisakcod_mp.dylib']
+        if any(path not in names or b'MW3Assets.json' not in source.read(path) for path in engine_paths):
             raise ValueError('IPA lacks automatic bundled-asset installation support')
         if PREFIX+'maps/specops_survival_v3.gsc' not in names:
             raise ValueError('IPA lacks the converted-weapon Survival entry')

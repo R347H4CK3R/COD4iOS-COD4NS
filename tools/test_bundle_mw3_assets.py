@@ -16,7 +16,9 @@ class BundleTests(unittest.TestCase):
             ipa=root/'input.ipa';output=root/'personal.ipa'
             with zipfile.ZipFile(ipa,'w') as z:
                 z.writestr(module.PREFIX+'maps/specops_survival_v3.gsc','script')
-                z.writestr('Payload/KisakCOD.app/KisakCOD',b'unchanged binary MW3Assets.json')
+                z.writestr('Payload/KisakCOD.app/KisakCOD',b'unchanged launcher')
+                for engine in ('sp','mp'):
+                    z.writestr('Payload/KisakCOD.app/Frameworks/libkisakcod_'+engine+'.dylib',b'engine MW3Assets.json')
             original=ipa.read_bytes()
             sidecar=output.with_suffix('.json');sidecar.write_text('existing report')
             with self.assertRaises(ValueError):module.bundle(ipa,assets,output)
@@ -27,7 +29,7 @@ class BundleTests(unittest.TestCase):
             self.assertEqual(ipa.read_bytes(),original)
             self.assertEqual(len(report['assets']),3)
             with zipfile.ZipFile(output) as z:
-                self.assertEqual(z.read('Payload/KisakCOD.app/KisakCOD'),b'unchanged binary MW3Assets.json')
+                self.assertEqual(z.read('Payload/KisakCOD.app/KisakCOD'),b'unchanged launcher')
             with self.assertRaises(ValueError):module.bundle(ipa,assets,ipa)
             with self.assertRaises(ValueError):module.bundle(ipa,assets,output)
 

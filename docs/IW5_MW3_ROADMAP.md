@@ -65,3 +65,15 @@ These results distinguish the user's *x86-era* installed content from the x64 re
 **Next priority:** verify full archive decompression and indexed asset names with OAT's Unlinker on a small zone. Then design native IW5 world/collision/script runtime; do not silently replace the requested full mode parity with a limited reimagining.
 
 - **Full compressed stream test:** The Dome Survival file's zlib stream beginning at offset 21 reached end-of-stream successfully, decompressing **3,322,009 bytes** from the 759,407-byte fastfile. This validates complete zlib stream decoding but **does not** validate the higher-level asset graph, scripts, collision, or actual map loading.
+
+## October 10, 2026 — repeatable on-device PC validation
+`tools/iw5/verify_fastfiles.py` was downloaded from this development branch and executed on the connected Windows PC against the original installation (read-only):
+| Zone | Packed bytes | Decoded bytes | Status |
+| --- | ---: | ---: | --- |
+| `so_survival_mp_dome.ff` | 759407 | 3322009 | complete |
+| `so_survival_mp_bootleg.ff` | 798273 | 3539388 | complete |
+| `common_survival.ff` | 67566140 | 118213223 | complete |
+
+All three had `trailing_bytes=0`; hashes were computed and displayed by the tool. Four synthetic tests in `tests/iw5/test_fastfile_validation.py` passed on the connected Windows PC.
+
+This is a repeatable **compression-layer** milestone, not asset linking, world construction, mode execution, native iOS rendering, or multiplayer support. Retain the full original parity target (MW3 multiplayer + Spec Ops + Survival, DLC; no campaign).

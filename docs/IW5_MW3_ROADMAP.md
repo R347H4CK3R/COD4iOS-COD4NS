@@ -148,3 +148,11 @@ Interpretation: this validates limited portable *model/texture file export*, not
 - The new `tools/iw5/validate_gltf_geometry.py` was executed on all **16** private Survival Dome glTF exports. After classifying three zero-vertex `com_laptop_open` LODs as empty geometry, it reported **16/16 structural passes**, **3 empty geometry exports**, **0 bounds errors**.
 - `prototypes/iw5-metal/IW5MetalSmokeView.swift` is a *standalone, unbuilt* MTKView-based iOS Metal smoke-test foundation using generated triangle vertices. It intentionally does not yet load glTF assets.
 - **No Xcode build or device validation was performed** for the Swift source. Integration with the iOS app target, actual private glTF import, shader/material conversion and runtime scene rendering remain outstanding.
+
+## Native mesh-preview bridge (October 10, 2026)
+- New `tools/iw5/gltf_to_iwm.py` converts OAT glTF triangle POSITION data into IWM1 (magic + little-endian vertex count + float32 XYZ triangle vertices). Bounds/index checks are performed and unsupported sparse/normalized accessors are rejected.
+- PC test with `com_laptop_close_lod0.gltf`: 828 triangle vertices / 9,944 byte output.
+- Batch PC test over 16 exported glTFs: **13 generated IWM1 files, 3 empty LOD exports skipped, 0 conversion failures**.
+- New `prototypes/iw5-metal/IW5MeshPreviewView.swift` contains a native MTKView renderer and IWM1 buffer parser. It is an **unbuilt source prototype**, orthographic geometry preview only, no textures or animations.
+- No extracted retail mesh files are committed; test outputs remain in Windows temp workspace.
+- **Next gate:** compile and run the viewer under macOS/Xcode on ARM64 iOS and visually confirm a converted model. After that, material/texture import, camera perspective and world geometry support.

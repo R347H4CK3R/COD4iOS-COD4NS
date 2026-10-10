@@ -57,11 +57,14 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     UIStackView *_panel;
     NSMutableArray<UIButton *> *_choices;
     BOOL _choosingMode, _running, _pendingShop, _setupInMatch, _setupFromShop;
-    NSInteger _screen; // 0 modes, 1 setup, 2 shop, 3 bank, 4 cheats
+    NSInteger _screen; // 0 modes, 1 setup, 2 shop, 3 bank, 4 cheats, 5 weapons, 6 equipment, 7 extras
     unsigned _map, _difficulty, _playerClass;
     UIScrollView *_scroll;
     NSString *_feedback;
-    NSTimeInterval _actionPendingUntil, _shopPendingUntil;
+    NSTimeInterval _actionPendingUntil, _shopPendingUntil, _hudNoticeUntil;
+    NSString *_lastStatusMessage, *_hudNotice;
+    uint64_t _noticeEpoch;
+    uint64_t _noticeSerial;
     NSUInteger _selected;
     NSTimer *_timer;
     kisak::controller::ButtonState _buttons;
@@ -90,6 +93,7 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
             [_hud.leadingAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.leadingAnchor constant:12],
             [_hud.topAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.topAnchor constant:8],
             [_hud.trailingAnchor constraintLessThanOrEqualToAnchor:_shop.leadingAnchor constant:-8],
+            [_hud.bottomAnchor constraintLessThanOrEqualToAnchor:self.safeAreaLayoutGuide.bottomAnchor constant:-8],
             [_shop.topAnchor constraintEqualToAnchor:_hud.topAnchor],
             [_shop.trailingAnchor constraintEqualToAnchor:_modes.leadingAnchor constant:-8],
             [_shop.widthAnchor constraintEqualToConstant:76],[_shop.heightAnchor constraintEqualToConstant:44],
@@ -184,7 +188,7 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
 - (void)renderSetup {
     NSString *mapName=[NSString stringWithUTF8String:cod4ios::survival::mapName(_map)];
     NSString *difficultyName=[NSString stringWithUTF8String:cod4ios::survival::difficultyName(_difficulty)];
-    NSArray *classes=@[@"Assault â€” M4",@"Raider â€” AK-47",@"Armored â€” M4 + 100 armor"];
+    NSArray *classes=@[@"Assault - M4",@"Raider - AK-47",@"Armored - M4 + 100 armor"];
     [self panelTitle:@"Survival Setup" detail:_feedback ?: @"Select map, difficulty and class. Start loads a new match. Only Bog has device validation."
         choices:@[[NSString stringWithFormat:@"Map: %@%@",mapName,[self mapAvailable:_map] ? @"" : @" (unavailable)"],
         [@"Difficulty: " stringByAppendingString:difficultyName],[@"Class: " stringByAppendingString:classes[_playerClass]],@"Start",@"Back"]];
@@ -194,7 +198,10 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     _screen=screen; _choosingMode=NO;
     if(screen==3) [self panelTitle:@"Survival Bank" detail:@"Transfers use match credits. Bank persists between matches." choices:@[@"Deposit 500",@"Deposit 1000",@"Deposit all",@"Withdraw 500",@"Withdraw 1000",@"Withdraw all",@"Back"]];
     else if(screen==4) [self panelTitle:@"Survival Cheats" detail:@"Cheats apply only to this Survival match." choices:@[@"Toggle invulnerability",@"Toggle infinite ammo",@"Add 10000 credits",@"Skip current wave",@"Back"]];
-    else [self panelTitle:@"Survival Shop" detail:@"Opening shopâ€¦" choices:@[@"Refill ammo â€” 250",@"Armor (100 points) â€” 500",@"AK-47 â€” 750",@"Pack-a-Punch â€” 2000 / 4000 / 6000",@"Bank",@"Cheats",@"Setup (new match)",@"Close shop"]];
+    else if(screen==5) [self panelTitle:@"Weapon Armory" detail:@"Refill, replace or upgrade your held weapon." choices:@[@"Refill ammo - 250",@"AK-47 - 750",@"Pack-a-Punch - 2000 / 4000 / 6000",@"Back"]];
+    else if(screen==6) [self panelTitle:@"Equipment Armory" detail:@"Protection for the next fight." choices:@[@"Armor (100 points) - 500",@"Revive protection - 1500 (rank 2)",@"Quick Recovery - 2000 (rank 4)",@"Sleight of Hand - 2500 (rank 6)",@"Back"]];
+    else if(screen==7) [self panelTitle:@"Survival Extras" detail:@"Persistent bank and match cheats." choices:@[@"Bank",@"Cheats",@"Back"]];
+    else [self panelTitle:@"Survival Armory" detail:@"Opening shop..." choices:@[@"Weapon Armory",@"Equipment Armory",@"Extras",@"Setup (new match)",@"Close shop"]];
     _pendingShop=pending;
 }
 - (void)openShop {
@@ -242,17 +249,39 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     }
 #ifndef KISAK_MP
     using namespace cod4ios::survival;
-    if((_screen==2 && index==7)) { queueAction(Action::CloseShop,_status.epoch); [self clearPanel]; return; }
-    if((_screen==3 && index==6) || (_screen==4 && index==4)) { [self renderShop:2]; return; }
-    if(!_status.shopOpen && _screen==2 && index>=4) { _detail.text=@"Shop opening is pending. Please wait."; return; }
-    if(_screen==2 && index>=4) { if(index==6) { _feedback=nil; [self showSetup:YES]; } else [self renderShop:index==4 ? 3 : 4]; return; }
-    if(!_status.shopOpen) { _detail.text=@"Shop opening is pending. Please wait."; return; }
+    if(_screen==2 && index==4) { queueAction(Action::CloseShop,_status.epoch); [self clearPanel]; return; }
+    if((_screen==3 && index==6) || (_screen==4 && index==4)) { [self renderShop:7]; return; }
+    if((_screen==5 && index==3) || (_screen==6 && index==4) || (_screen==7 && index==2)) { [self renderShop:2]; return; }
+    if(_screen==2) {
+        if(index==3) {
+            if(!_status.shopOpen) { _detail.text=@"Shop opening is pending. Please wait."; _actionPendingUntil=NSDate.timeIntervalSinceReferenceDate+.35; return; }
+            _feedback=nil; [self showSetup:YES];
+        } else [self renderShop:index==0 ? 5 : index==1 ? 6 : 7];
+        return;
+    }
+    if(_screen==7) { [self renderShop:index==0 ? 3 : 4]; return; }
+    if(!_status.shopOpen) { _detail.text=@"Shop opening is pending. Please wait."; _actionPendingUntil=NSDate.timeIntervalSinceReferenceDate+.35; return; }
     Action action=Action::Ammo; unsigned amount=0;
-    if(_screen==2) action=index==0 ? Action::Ammo : index==1 ? Action::Armor : index==2 ? Action::Rifle : Action::Pack;
+    if(_screen==5) action=index==0 ? Action::Ammo : index==1 ? Action::Rifle : Action::Pack;
+    else if(_screen==6) {
+        if(index==1 && (_status.reviveReady || _status.rank<2)) {
+            _detail.text=_status.reviveReady ? @"Revive protection is already ready." : @"Revive protection unlocks at rank 2.";
+            _actionPendingUntil=NSDate.timeIntervalSinceReferenceDate+1; return;
+        }
+        if(index==2 && (_status.quickRecovery || _status.rank<4)) {
+            _detail.text=_status.quickRecovery ? @"Quick Recovery is already active." : @"Quick Recovery unlocks at rank 4.";
+            _actionPendingUntil=NSDate.timeIntervalSinceReferenceDate+1; return;
+        }
+        if(index==3 && (_status.fastReload || _status.rank<6)) {
+            _detail.text=_status.fastReload ? @"Sleight of Hand is already active." : @"Sleight of Hand unlocks at rank 6.";
+            _actionPendingUntil=NSDate.timeIntervalSinceReferenceDate+1; return;
+        }
+        action=index==0 ? Action::Armor : index==1 ? Action::Revive : index==2 ? Action::Recovery : Action::FastReload;
+    }
     else if(_screen==3) { action=index<3 ? Action::Deposit : Action::Withdraw; amount=index%3==0 ? 500 : index%3==1 ? 1000 : index<3 ? _status.match.credits : _status.bank; }
     else action=index==0 ? Action::God : index==1 ? Action::InfiniteAmmo : index==2 ? Action::Money : Action::NextWave;
     const bool accepted=queueAction(action,_status.epoch,amount);
-    _detail.text=accepted ? @"Request pendingâ€¦" : @"Request rejected. Try again.";
+    _detail.text=accepted ? @"Request pending..." : @"Request rejected. Try again.";
     _actionPendingUntil=NSDate.timeIntervalSinceReferenceDate+.35;
 #endif
 }
@@ -261,11 +290,23 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     using namespace cod4ios::survival;
     _status=readStatus();
     _hud.hidden=!_status.active; _shop.hidden=!_status.active;
-    if(!_status.active) { if(self.modal && (!_choosingMode || (_screen==1 && _setupInMatch))) [self clearPanel]; return; }
+    if(!_status.active) { _lastStatusMessage=nil; _hudNotice=nil; _hudNoticeUntil=0; if(self.modal && (!_choosingMode || (_screen==1 && _setupInMatch))) [self clearPanel]; return; }
     const auto &s=_status.match;
-    _hud.text=[NSString stringWithFormat:@"Wave %u Ã¢â‚¬Â¢ Enemies %u Ã¢â‚¬Â¢ Credits %u\nBest %u Ã¢â‚¬Â¢ Armor %u%@",s.wave,s.alive+s.spawnRemaining,s.credits,_status.bestWave,_status.armor,
-        s.phase==Phase::Intermission ? [NSString stringWithFormat:@" Ã¢â‚¬Â¢ Next wave %.0fs",ceil(s.secondsRemaining)] : @""];
-    _hud.text=[_hud.text stringByAppendingFormat:@"\nBank %u - Rank %u (%u XP)",_status.bank,_status.rank,_status.xp];
+    NSString *message=[NSString stringWithUTF8String:_status.message] ?: @"";
+    const NSTimeInterval now=NSDate.timeIntervalSinceReferenceDate;
+    if(_noticeEpoch!=_status.epoch) {
+        _noticeEpoch=_status.epoch; _lastStatusMessage=nil; _hudNotice=nil; _hudNoticeUntil=0;
+    }
+    if(_noticeSerial!=_status.noticeSerial || ![_lastStatusMessage isEqualToString:message]) {
+        _noticeSerial=_status.noticeSerial;
+        _lastStatusMessage=[message copy];
+        if(message.length && s.phase!=Phase::GameOver) {
+            _hudNotice=[[message componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet] componentsJoinedByString:@" "];
+            _hudNoticeUntil=now+3;
+        }
+    }
+    _hud.text=[NSString stringWithFormat:@"Survival - Wave %u - Enemies %u\nCash %u - Armor %u - Best %u%@\nRank %u (%u XP) - Bank %u - Streak %u",s.wave,s.alive+s.spawnRemaining,s.credits,_status.armor,_status.bestWave,
+        s.phase==Phase::Intermission ? [NSString stringWithFormat:@" - Next %.0fs",ceil(s.secondsRemaining)] : @"",_status.rank,_status.xp,_status.bank,_status.killstreak];
     [_shop setTitle:s.phase==Phase::GameOver ? @"Retry" : @"Shop" forState:UIControlStateNormal];
     _shop.enabled=YES;
     if(self.modal && !_choosingMode) {
@@ -281,15 +322,25 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
         else if(NSDate.timeIntervalSinceReferenceDate>=_actionPendingUntil) {
             NSString *response=_pendingShop ? @"Opening shop..." : [NSString stringWithUTF8String:_status.message];
             if(_screen==3) _detail.text=[NSString stringWithFormat:@"Wallet %u - Bank %u - Rank %u\n%@",s.credits,_status.bank,_status.rank,response];
+            else if(_screen==6) _detail.text=[NSString stringWithFormat:@"Cash %u - Rank %u\nRevive protection prevents one lethal hit and restores health.\n%@",s.credits,_status.rank,response];
             else if(_screen==4) _detail.text=[NSString stringWithFormat:@"Wallet %u - God %@ - Infinite ammo %@\n%@",s.credits,_status.godMode ? @"ON" : @"OFF",_status.infiniteAmmo ? @"ON" : @"OFF",response];
-            else _detail.text=[NSString stringWithFormat:@"Wallet %u - Bank %u - Rank %u (%u XP)\nHeld weapon Pack tier %u / 3\n%@",s.credits,_status.bank,_status.rank,_status.xp,_status.packTier,response];
+            else _detail.text=[NSString stringWithFormat:@"Wallet %u - Bank %u - Rank %u (%u XP)\nHeld weapon Pack tier %u / 3 - Streak %u\nSupply rewards: 5 ammo / 8 armor / 12 cash 1000\n%@",s.credits,_status.bank,_status.rank,_status.xp,_status.packTier,_status.killstreak,response];
+        }
+        if(_screen==6 && _choices.count>=4) {
+            NSString *revive=_status.reviveReady ? @"Revive protection - READY" : _status.rank<2 ? @"Revive protection - LOCKED (rank 2)" : @"Revive protection - 1500";
+            NSString *recovery=_status.quickRecovery ? @"Quick Recovery - ACTIVE" : _status.rank<4 ? @"Quick Recovery - LOCKED (rank 4)" : @"Quick Recovery - 2000";
+            [_choices[1] setTitle:revive forState:UIControlStateNormal];
+            [_choices[2] setTitle:recovery forState:UIControlStateNormal];
+            NSString *reload=_status.fastReload ? @"Sleight of Hand - ACTIVE" : _status.rank<6 ? @"Sleight of Hand - LOCKED (rank 6)" : @"Sleight of Hand - 2500";
+            [_choices[3] setTitle:reload forState:UIControlStateNormal];
         }
         if(_screen==4 && _choices.count>=2) {
             [_choices[0] setTitle:[NSString stringWithFormat:@"Invulnerability: %@ (toggle)",_status.godMode ? @"ON" : @"OFF"] forState:UIControlStateNormal];
             [_choices[1] setTitle:[NSString stringWithFormat:@"Infinite ammo: %@ (toggle)",_status.infiniteAmmo ? @"ON" : @"OFF"] forState:UIControlStateNormal];
         }
     }
-    if(s.phase==Phase::GameOver) _hud.text=[_hud.text stringByAppendingFormat:@"\n%s",_status.message];
+    if(s.phase==Phase::GameOver) _hud.text=[_hud.text stringByAppendingFormat:@"\n%@",[[message componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet] componentsJoinedByString:@" "]];
+    else if(_hudNotice.length && now<_hudNoticeUntil) _hud.text=[_hud.text stringByAppendingFormat:@"\n%@",_hudNotice];
 #endif
 }
 - (void)pollController {

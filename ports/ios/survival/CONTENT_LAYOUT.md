@@ -33,3 +33,13 @@ Bank transfers use match credits; deposit/withdraw 500, 1000 or all. Bank and XP
 Cheats are available inside Shop: invulnerability, infinite ammo, add 10000 credits and skip the current wave. They apply to the current Survival match and reset on Retry. Skipping does not grant kill rewards or completion XP. In-game Setup starts a fresh match with the selected map, class and difficulty.
 
 The expanded mode installs `maps/specops_survival_v2.gsc` alongside the older script without replacing user edits. The performance overlay is disabled through the Metal layer; if system settings show it in an older app version, turn off Settings > Developer > Show Metal HUD.
+
+## MW3-inspired armories, perks and rewards
+
+Shop now separates Weapon Armory, Equipment Armory and Extras. Rank-gated equipment purchases last for the match: Revive protection (1500, rank 2) prevents one lethal hit, restores health and grants three seconds of cover; Quick Recovery (2000, rank 4) heals five health every quarter-second after two seconds without damage; Sleight of Hand (2500, rank 6) accelerates reload timing. Revive protection is an automatic safeguard, not a downed/crawl state. All original weapon definitions remain unchanged.
+
+Five consecutive tracked kills without taking damage grant a 100 cash chain bonus. Clearing a wave grants 100 + 25 per wave (wave multiplier capped at 100), plus 150 for taking no damage that wave. Cheat-skipped waves receive none of these completion bonuses. Every sixth wave includes two heavy assault enemies with existing COD4 models, four times normal health and reduced incoming damage; these are not MW3 Juggernaut assets.
+
+Life killstreaks persist across waves and damage: 5 kills refill ammunition, 8 refill armor, 12 grant 1000 cash. Each threshold pays once per life. Duplicate death notifications, removed actors and cheat-skipped enemies cannot earn rewards. These are COD4 supply reward equivalents, not Predator missiles, helicopters or MW3's complete killstreak roster. HUD notices report bonuses and supplies.
+
+The build does not include MW3 guns or maps. Those require separately supplied compatible assets and conversion/engine work. MW3 fastfiles cannot simply be placed in the COD4 mods folder and assumed compatible. Current map choices and gun models remain COD4 assets. Cooperative play and authentic MW3 aerial support are not implemented.

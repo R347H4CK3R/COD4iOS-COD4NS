@@ -16,3 +16,4 @@ bool KisakSurvival_IsSelected();
 const char *KisakSurvival_StartupCommand();
 bool KisakSurvival_Invulnerable(gentity_s *player);
 int KisakSurvival_ModifyDamage(gentity_s *target,gentity_s *attacker,int damage,unsigned weapon);
+int KisakSurvival_ReloadDuration(int clientNum,int duration);

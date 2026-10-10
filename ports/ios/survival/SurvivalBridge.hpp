@@ -3,13 +3,16 @@
 #include <cstdint>
 #include <vector>
 namespace cod4ios::survival {
-enum class Action { OpenShop, CloseShop, Ammo, Armor, Rifle, Retry, Deposit, Withdraw, Pack, God, InfiniteAmmo, Money, NextWave };
+enum class Action { OpenShop, CloseShop, Ammo, Armor, Rifle, Retry, Deposit, Withdraw, Pack, God, InfiniteAmmo, Money, NextWave, Revive, Recovery, FastReload };
 struct Status {
     Snapshot match{Phase::Idle,0,0,0,0,0,0};
     bool active=false, shopOpen=false;
     unsigned bestWave=0, armor=0;
     unsigned bank=0, xp=0, rank=1, packTier=0, map=0, difficulty=1, playerClass=0;
     bool godMode=false, infiniteAmmo=false;
+    bool reviveReady=false, quickRecovery=false, fastReload=false;
+    unsigned killstreak=0;
+    std::uint64_t noticeSerial=0;
     std::uint64_t epoch=0;
     char message[192]{};
 };

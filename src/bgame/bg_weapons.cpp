@@ -7,6 +7,9 @@
 #include <aim_assist/aim_assist.h>
 #include <xanim/xanim.h>
 #include <universal/com_files.h>
+#if defined(__APPLE__) && defined(KISAK_SP)
+#include "../../ports/ios/survival/survival_engine.h"
+#endif
 
 #ifdef KISAK_MP
 #include <game_mp/g_main_mp.h>
@@ -1856,6 +1859,9 @@ void __cdecl PM_Weapon_FinishReloadStart(pmove_t *pm, int32_t delayedAction)
                 ps->weaponstate = WEAPON_RELOAD_END;
                 PM_StartWeaponAnim(ps, WEAP_RELOAD_END);
                 ps->weaponTime = weapDef->iReloadEndTime;
+#if defined(__APPLE__) && defined(KISAK_SP)
+                ps->weaponTime = KisakSurvival_ReloadDuration(ps->clientNum, ps->weaponTime);
+#endif
                 PM_AddEvent(ps, EV_RELOAD_END);
             }
             else
@@ -1893,6 +1899,9 @@ void __cdecl PM_SetReloadingState(playerState_s *ps)
     else
         ps->weaponstate = WEAPON_RELOADING;
     PM_SetWeaponReloadAddAmmoDelay(ps);
+#if defined(__APPLE__) && defined(KISAK_SP)
+    ps->weaponTime=KisakSurvival_ReloadDuration(ps->clientNum,ps->weaponTime);
+#endif
 }
 
 void __cdecl PM_SetWeaponReloadAddAmmoDelay(playerState_s *ps)
@@ -1940,12 +1949,20 @@ void __cdecl PM_SetWeaponReloadAddAmmoDelay(playerState_s *ps)
         if (!reloadTime)
             reloadTime = 1;
         ps->weaponDelay = reloadTime;
+#if defined(__APPLE__) && defined(KISAK_SP)
+        ps->weaponDelay = KisakSurvival_ReloadDuration(ps->clientNum, ps->weaponDelay);
+#endif
     }
     else
     {
     LABEL_26:
         if (reloadTime)
+        {
             ps->weaponDelay = reloadTime;
+#if defined(__APPLE__) && defined(KISAK_SP)
+            ps->weaponDelay = KisakSurvival_ReloadDuration(ps->clientNum, ps->weaponDelay);
+#endif
+        }
     }
 }
 
@@ -2020,6 +2037,12 @@ void __cdecl PM_Weapon_ReloadDelayedAction(playerState_s *ps)
                     reloadTime = weapDef->iReloadAddTime;
             }
             rechamberTime = weapDef->iRechamberBoltTime >= reloadTime ? 1 : weapDef->iRechamberBoltTime;
+#if defined(__APPLE__) && defined(KISAK_SP)
+            // Both deadlines share the same scaled clock; scaling the difference
+            // instead can round the add-ammo event past reload completion.
+            reloadTime = KisakSurvival_ReloadDuration(ps->clientNum, reloadTime);
+            rechamberTime = KisakSurvival_ReloadDuration(ps->clientNum, rechamberTime);
+#endif
             reloadTimea = reloadTime - rechamberTime;
             if (reloadTimea >= 1)
             {
@@ -2097,6 +2120,9 @@ void __cdecl PM_Weapon_FinishReload(pmove_t *pm, int32_t delayedAction)
                 ps->weaponstate = WEAPON_RELOAD_END;
                 PM_StartWeaponAnim(ps, WEAP_RELOAD_END);
                 ps->weaponTime = weapDef->iReloadEndTime;
+#if defined(__APPLE__) && defined(KISAK_SP)
+                ps->weaponTime = KisakSurvival_ReloadDuration(ps->clientNum, ps->weaponTime);
+#endif
                 PM_AddEvent(ps, EV_RELOAD_END);
             }
             else
@@ -2150,6 +2176,10 @@ void __cdecl PM_Weapon_CheckForReload(pmove_t *pm)
             if (ps->weaponstate == WEAPON_RELOAD_START && weapDef->iReloadStartTime)
             {
                 frac = (double)(weapDef->iReloadStartTime - ps->weaponTime) / (double)weapDef->iReloadStartTime;
+#if defined(__APPLE__) && defined(KISAK_SP)
+                const int startTime = KisakSurvival_ReloadDuration(ps->clientNum, weapDef->iReloadStartTime);
+                frac = (double)(startTime - ps->weaponTime) / (double)startTime;
+#endif
                 if (MY_RELOADSTART_INTERUPT_IGNORE_FRAC < (double)frac)
                     ps->weaponstate = WEAPON_RELOAD_START_INTERUPT;
             }
@@ -2223,6 +2253,9 @@ void __cdecl PM_BeginWeaponReload(playerState_s *ps)
             ps->weaponstate = WEAPON_RELOAD_START;
             PM_AddEvent(ps, EV_RELOAD_START);
             PM_SetWeaponReloadAddAmmoDelay(ps);
+#if defined(__APPLE__) && defined(KISAK_SP)
+            ps->weaponTime = KisakSurvival_ReloadDuration(ps->clientNum, ps->weaponTime);
+#endif
         }
         else
         {

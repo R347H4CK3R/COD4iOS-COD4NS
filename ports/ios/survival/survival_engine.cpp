@@ -5,6 +5,7 @@
 #include "SurvivalPause.hpp"
 #include "SurvivalUpgrades.hpp"
 #include "SurvivalBridge.hpp"
+#include "SurvivalArmory.hpp"
 #include "../platform/apple_engine_mode.h"
 #include <database/database.h>
 #include <game/g_main.h>
@@ -24,6 +25,7 @@
 #include <cstring>
 #include <cstdio>
 #include <array>
+#include <atomic>
 
 namespace {
 using namespace cod4ios::survival;
@@ -38,6 +40,13 @@ Config config;
 Profile profile;
 PauseLease pauseLease;
 WeaponUpgrades upgrades;
+Armory armory;
+Rewards rewards;
+Killstreaks killstreaks;
+std::atomic<bool> fastReloadEnabled{false};
+std::array<bool,MAX_GENTITIES> heavyEnemies{};
+unsigned observedWave=0, heavySpawned=0;
+int lastDamage=0, lastRecovery=0, reviveUntil=0;
 int lastAmmo=0;
 unsigned awardedCompletedWave=0;
 void syncPause() {
@@ -59,10 +68,25 @@ void profileStatus() {
     status.bank=profile.bank; status.xp=profile.xp; status.rank=rankForXP(profile.xp);
     status.map=config.map; status.difficulty=config.difficulty; status.playerClass=config.playerClass;
     status.packTier=g_entities[0].client ? upgrades.tier(g_entities[0].client->ps.weapon) : 0;
+    status.reviveReady=armory.reviveReady(); status.quickRecovery=armory.recoveryEnabled();
+    status.fastReload=armory.fastReloadEnabled(); status.killstreak=killstreaks.count();
 }
 void persistProfile() { KisakApple_StoreSurvivalProgress(profile.bank,profile.xp); profileStatus(); }
+void updateRecovery(int now) {
+    const auto phase=runtime.session().snapshot().phase;
+    if(!armory.recoveryEnabled() || (phase!=Phase::Fighting && phase!=Phase::Intermission) || now-lastDamage<2000 || now-lastRecovery<250) return;
+    auto &player=g_entities[0];
+    if(player.client && player.health>0) {
+        const int maximum=player.client->ps.stats[STAT_MAX_HEALTH];
+        if(maximum>0 && player.health<maximum) {
+            player.health+=std::min(5,maximum-player.health);
+            player.client->ps.stats[STAT_HEALTH]=player.health;
+        }
+    }
+    lastRecovery=now;
+}
 bool selected() { const char *value=std::getenv("KISAK_SURVIVAL_MODE"); return value && !std::strcmp(value,"1"); }
-void message(const char *text) { std::snprintf(status.message,sizeof(status.message),"%s",text); }
+void message(const char *text) { std::snprintf(status.message,sizeof(status.message),"%s",text); ++status.noticeSerial; }
 void publish() { status.match=runtime.session().snapshot(); status.active=active; profileStatus(); publishStatus(status); }
 bool grant(Purchase item) {
     gentity_s *player=&g_entities[0];
@@ -92,6 +116,7 @@ void processActions() {
         const auto phase=runtime.session().snapshot().phase;
         if(request.action==Action::CloseShop) { status.shopOpen=false; syncPause(); continue; }
         if(request.action==Action::Retry) {
+            fastReloadEnabled.store(false,std::memory_order_relaxed);
             status.shopOpen=false; syncPause(); active=false; publish();
             Cbuf_AddText(0,reloadCommand());
             return;
@@ -109,6 +134,20 @@ void processActions() {
         }
         case Action::Deposit: success=deposit(runtime.session(),profile,request.amount); if(success) persistProfile(); break;
         case Action::Withdraw: success=withdraw(runtime.session(),profile,request.amount); if(success) persistProfile(); break;
+        case Action::Revive: case Action::Recovery: case Action::FastReload: {
+            const auto &player=g_entities[0];
+            if(player.r.inuse && player.client && player.health>0) {
+                const bool revive=request.action==Action::Revive;
+                const bool reload=request.action==Action::FastReload;
+                success=runtime.session().trySpend(revive ? Armory::reviveCost : reload ? Armory::fastReloadCost : Armory::recoveryCost,[&]{
+                    const unsigned rank=rankForXP(profile.xp);
+                    return revive ? armory.buyRevive(rank) : reload ? armory.buyFastReload(rank) : armory.buyRecovery(rank);
+                });
+                if(success) fastReloadEnabled.store(armory.fastReloadEnabled(),std::memory_order_relaxed);
+            }
+            if(!success) { message("Equipment unavailable: check rank, cash, or an already owned perk."); continue; }
+            break;
+        }
         case Action::Pack: {
             const auto *player=&g_entities[0];
             const unsigned weapon=player->client ? player->client->ps.weapon : 0;
@@ -132,7 +171,7 @@ void processActions() {
                     auto &ent=g_entities[i];
                     if(ent.r.inuse && ent.actor && ent.sentient && ent.sentient->eTeam==TEAM_AXIS) G_FreeEntity(&ent);
                 }
-                runtime.session().skipWave(); success=true;
+                rewards.abandonWave(); runtime.session().skipWave(); success=true;
             }
             break;
         default: break;
@@ -151,7 +190,9 @@ const char *KisakSurvival_SaveGameDirectory() { return selected() ? "mods/specop
 bool KisakSurvival_IsSelected() { return selected(); }
 bool KisakSurvival_UsesManualRetry() { return selected(); }
 void KisakSurvival_Shutdown() {
-    status.shopOpen=false; syncPause(); upgrades.reset();
+    status.shopOpen=false; syncPause(); upgrades.reset(); armory.reset(); rewards.reset(); heavyEnemies.fill(false);
+    killstreaks.reset(); fastReloadEnabled.store(false,std::memory_order_relaxed);
+    observedWave=heavySpawned=0; lastDamage=lastRecovery=reviveUntil=0;
     active=false; failed=false; runtime.shutdown(); spawners.clear(); resetBridge(); status=readStatus();
 }
 void KisakSurvival_Begin() {
@@ -185,6 +226,10 @@ void KisakSurvival_Frame() {
     const double delta=std::clamp((now-lastTime)/1000.0,0.0,0.25); lastTime=now;
     if(!status.shopOpen && !failed) runtime.tick(delta);
     const Snapshot snapshot=runtime.session().snapshot();
+    if(snapshot.phase==Phase::Fighting && snapshot.wave!=observedWave) {
+        observedWave=snapshot.wave; heavySpawned=0; rewards.beginWave(snapshot.wave);
+        message(snapshot.wave%6==0 ? "Heavy assault wave. Armored enemies incoming." : "New wave. Earn cash and keep your kill chain alive.");
+    }
     if(snapshot.bestCompletedWave>status.bestWave) {
         status.bestWave=snapshot.bestCompletedWave;
         KisakApple_RecordSurvivalBestWave(status.bestWave);
@@ -192,10 +237,14 @@ void KisakSurvival_Frame() {
     }
     if(snapshot.bestCompletedWave>awardedCompletedWave) {
         awardedCompletedWave=snapshot.bestCompletedWave;
+        const unsigned bonus=rewards.completeWave(snapshot.bestCompletedWave);
+        runtime.session().addCredits(bonus);
+        if(bonus) { char text[192]; std::snprintf(text,sizeof(text),"Wave clear! +$%u completion / flawless bonus.",bonus); message(text); }
         profile.addXP(killReward(config.difficulty)); persistProfile();
     }
     if(snapshot.phase==Phase::GameOver) { status.shopOpen=false; syncPause(); }
     if(status.infiniteAmmo && now-lastAmmo>=100) { grant(Purchase::Ammo); lastAmmo=now; }
+    updateRecovery(now);
     if(snapshot.phase==Phase::Fighting && snapshot.spawnRemaining && now>=nextSpawn && !failed) {
         nextSpawn=now+500;
         if(runtime.reserve(1)) {
@@ -217,7 +266,10 @@ void KisakSurvival_Frame() {
             else {
                 const unsigned slot=static_cast<unsigned>(spawned->s.number);
                 runtime.spawned(slot,++generations[slot]);
+                const bool heavy=snapshot.wave%6==0 && heavySpawned<2;
+                heavyEnemies[slot]=heavy; if(heavy) ++heavySpawned;
                 spawned->health=spawned->maxHealth=static_cast<int>(enemyHealth(snapshot.wave,config.difficulty));
+                if(heavy) spawned->health=spawned->maxHealth*=4;
                 if(spawned->actor) {
                     spawned->actor->accuracy=enemyAccuracy(snapshot.wave,config.difficulty);
                     spawned->actor->allowDeath=1;
@@ -226,7 +278,7 @@ void KisakSurvival_Frame() {
                         Actor_UpdateThreat(spawned->actor);
                     }
                 }
-                lastProgress=now; message("");
+                lastProgress=now;
             }
         }
         if(now-lastProgress>20000 && snapshot.alive==0) {
@@ -242,6 +294,12 @@ void KisakSurvival_EnemyDied(gentity_s *enemy,gentity_s *attacker) {
     if(slot>=generations.size()) return;
     const bool playerKill=attacker==&g_entities[0] && attacker->client;
     if(runtime.killed(slot,generations[slot],playerKill) && playerKill && runtime.session().snapshot().phase==Phase::Fighting) {
+        const unsigned bonus=rewards.kill(); runtime.session().addCredits(bonus);
+        if(bonus) message("Kill chain! +$100.");
+        const unsigned support=killstreaks.kill();
+        if(support & Killstreaks::Supply) { grant(Purchase::Ammo); message("5-kill streak: ammo supply delivered."); }
+        if(support & Killstreaks::Armor) { status.armor=100; message("8-kill streak: armor supply delivered."); }
+        if(support & Killstreaks::ReserveCash) { runtime.session().addCredits(1000); message("12-kill streak: +$1000 support reserve."); }
         profile.addXP(killXP(config.difficulty)); persistProfile();
     }
 }
@@ -252,12 +310,21 @@ void KisakSurvival_Removed(gentity_s *enemy) {
 }
 void KisakSurvival_PlayerDied() {
     if(!active) return;
+    killstreaks.reset(); fastReloadEnabled.store(false,std::memory_order_relaxed);
     runtime.session().onPlayerDied(); status.shopOpen=false; syncPause(); message("Game over. Retry to start a new match."); publish();
 }
 int KisakSurvival_AbsorbDamage(gentity_s *player,int damage) {
-    if(!active || !player || !player->client || damage<=0) return damage;
+    if(!active || !selected() || player!=&g_entities[0] || !player->client || damage<=0) return damage;
+    lastDamage=level.time; rewards.damaged();
     const unsigned absorbed=std::min(status.armor,static_cast<unsigned>(damage)/2);
-    status.armor-=absorbed; return damage-static_cast<int>(absorbed);
+    status.armor-=absorbed; damage-=static_cast<int>(absorbed);
+    if(damage>=player->health && player->health>0 && armory.consumeRevive()) {
+        const int maximum=std::max(1,player->client->ps.stats[STAT_MAX_HEALTH]);
+        player->health=maximum; player->client->ps.stats[STAT_HEALTH]=maximum;
+        reviveUntil=level.time+3000; message("Revive protection used. Three seconds of cover.");
+        return 0;
+    }
+    return damage;
 }
 const char *KisakSurvival_StartupCommand() {
     loadConfig();
@@ -265,10 +332,16 @@ const char *KisakSurvival_StartupCommand() {
     std::snprintf(command,sizeof(command),"+set fs_game mods/specops_survival +set kisak_survival_class %u +devmap %s",config.playerClass,mapId(config.map));
     return command;
 }
-bool KisakSurvival_Invulnerable(gentity_s *player) { return active && selected() && status.godMode && player==&g_entities[0]; }
+bool KisakSurvival_Invulnerable(gentity_s *player) { return active && selected() && (status.godMode || level.time<reviveUntil) && player==&g_entities[0]; }
 int KisakSurvival_ModifyDamage(gentity_s *target,gentity_s *attacker,int damage,unsigned weapon) {
     if(!active || !selected() || attacker!=&g_entities[0] || !target || !target->actor || !target->sentient || target->sentient->eTeam!=TEAM_AXIS) return damage;
+    const unsigned slot=static_cast<unsigned>(target->s.number);
+    if(slot<heavyEnemies.size() && heavyEnemies[slot] && damage>0) damage=std::max(1,damage/2);
     return upgrades.damage(weapon,damage);
+}
+int KisakSurvival_ReloadDuration(int clientNum,int duration) {
+    if(clientNum!=0 || duration<=0 || !fastReloadEnabled.load(std::memory_order_relaxed)) return duration;
+    return std::max(1,duration/2);
 }
 void KisakSurvival_PumpMode() {
     // Native requests must be consumed even while cl_paused prevents G_RunFrame.

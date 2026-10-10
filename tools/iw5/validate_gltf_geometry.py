@@ -10,7 +10,7 @@ def check(path):
     errors=[]; actual=[]
     for i,b in enumerate(g.get("buffers",[])):
         uri=b.get("uri")
-        if not uri: errors.append(f"buffer {i}: missing URI");actual.append(0);continue
+        if not uri:\n            if b.get("byteLength",0)>0: errors.append(f"buffer {i}: missing URI for nonempty data")\n            actual.append(0);continue
         if uri.startswith("data:"):
             try: payload=base64.b64decode(uri.split(",",1)[1]);length=len(payload)
             except Exception: errors.append(f"buffer {i}: invalid data URI");length=0
@@ -36,11 +36,11 @@ def check(path):
         count=a.get("count",0);offset=a.get("byteOffset",0)
         if not element or count<0 or offset<0:errors.append(f"accessor {i}: invalid definition");continue
         if not stride:stride=element
-        required=offset+(count-1)*stride+element if count else offset
+        required=offset+(count-1)*stride+element if count else 0
         if stride<element or required>v.get("byteLength",0):errors.append(f"accessor {i}: out of bounds")
-    return {"file":path.name,"meshes":len(g.get("meshes",[])),"accessors":len(g.get("accessors",[])),"errors":errors}
+    return {"file":path.name,"meshes":len(g.get("meshes",[])),"accessors":len(g.get("accessors",[])),\n            "empty_geometry":not any(a.get("count",0)>0 for a in g.get("accessors",[])), "errors":errors}
 def main():
     ap=argparse.ArgumentParser();ap.add_argument("folder",type=Path);args=ap.parse_args()
     results=[check(p) for p in sorted(args.folder.rglob("*.gltf"))]
-    print(json.dumps({"tested":len(results),"passed":sum(not r["errors"] for r in results),"errors":[r for r in results if r["errors"]]},indent=2))
+    print(json.dumps({"tested":len(results),"passed":sum(not r["errors"] for r in results),"empty_geometry":sum(r["empty_geometry"] for r in results),"errors":[r for r in results if r["errors"]]},indent=2))
 if __name__=="__main__":main()

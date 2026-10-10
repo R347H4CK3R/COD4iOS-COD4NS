@@ -143,3 +143,8 @@ Interpretation: this validates limited portable *model/texture file export*, not
 - Rerunning `validate_gltf.py` reported **16 valid glTF files, 68 mesh groups, 513 nodes, 0 missing external references** (previously 3 unresolved image references).
 - **Scope of pass:** resource-reference existence only. No glTF binary accessor/buffer validity test, image quality check, Metal rendering, animation, level geometry, collision or playable MW3 runtime is established.
 - Next engineering gate: validate glTF accessors / binary buffer bounds and build a minimal Metal-based viewer that renders one asset correctly before expanding toward original map geometry and selected modes.
+
+## Geometry validation and Metal prototype — October 10, 2026
+- The new `tools/iw5/validate_gltf_geometry.py` was executed on all **16** private Survival Dome glTF exports. After classifying three zero-vertex `com_laptop_open` LODs as empty geometry, it reported **16/16 structural passes**, **3 empty geometry exports**, **0 bounds errors**.
+- `prototypes/iw5-metal/IW5MetalSmokeView.swift` is a *standalone, unbuilt* MTKView-based iOS Metal smoke-test foundation using generated triangle vertices. It intentionally does not yet load glTF assets.
+- **No Xcode build or device validation was performed** for the Swift source. Integration with the iOS app target, actual private glTF import, shader/material conversion and runtime scene rendering remain outstanding.

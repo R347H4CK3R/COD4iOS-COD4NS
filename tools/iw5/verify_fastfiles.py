@@ -12,6 +12,9 @@ CHUNK = 65536
 def probe(path):
     with path.open("rb") as fp:
         header = fp.read(32)
+        if header[:8] == b"IWff0100":
+            return {"name": path.name, "status": "alternative_container", "magic_hex": header[:8].hex(),
+                    "notice": "Requires separate IWff0100 container/parser support; zlib at 21 is not assumed."}
         if header[:8] != b"IWffu100":
             return {"name": path.name, "status": "unsupported_magic", "magic_hex": header[:8].hex()}
         fp.seek(21)

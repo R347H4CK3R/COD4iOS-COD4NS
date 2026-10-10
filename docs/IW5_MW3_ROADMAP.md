@@ -42,7 +42,7 @@ Read-only binary probes on the user's installed game:
 - `iw5sp.exe`, `iw5mp.exe`: PE machine `0x014C` (x86, 32-bit).
 - `zone/english/common_survival.ff`: 67,566,140 bytes, first 8 bytes ASCII `IWffu100`.
 - `zone/english/so_survival_mp_dome.ff`: 759,407 bytes, same `IWffu100` magic.
-- Both sampled `.ff` files contain a `78 DA` marker starting at offset 24, consistent with a zlib-compressed payload; this alone is not a complete parser validation.
+- Both sampled `.ff` files contain a `78 DA` marker starting at offset 21, consistent with a zlib-compressed payload; this alone is not a complete parser validation.
 - `main/iw_00.iwd`: 314,819,587 bytes, `PK 03 04` ZIP signature.
 
 These results distinguish the user's *x86-era* installed content from the x64 retail content reported by the MW32011NCP project's updated IW5 tool research. Choose the matching OAT reader branch after testing; do not assume updated x64 layouts.
@@ -53,3 +53,13 @@ These results distinguish the user's *x86-era* installed content from the x64 re
 - `https://github.com/ZoneTool/zonetool` — supported IW5 asset types, likely additional conversion references.
 
 **Validated next step:** Build OAT on the PC and test `common_survival.ff` and `so_survival_mp_dome.ff` in read-only output mode to a separate workspace. Record parsed type counts and failures, then identify renderer/runtime interfaces required for a native iOS vertical slice.
+
+
+## Read-only archive probing verified October 10, 2026
+- `main/iw_00.iwd` opens using Python's ZIP reader, with 1,937 entries. Sample resources include `images/*.iwi`.
+- `so_survival_mp_dome.ff`: zlib decompression starting at byte offset **21** successfully decoded **17,783 bytes** from the first 4,096 input bytes. This only validates a compressed prefix, not the complete archive, world geometry or renderability.
+- Probe script: `tools/iw5/probe_mw3_assets.py`. No original files changed.
+- OpenAssetTools' published IW5 asset support matrix lists missing export support for `GfxWorld`, `clipMap_t`, `PathData`, `ComWorld`, and various shaders. These are blocking dependencies for a general runtime; extracting models/textures alone is insufficient.
+- Reference: https://github.com/Laupetin/OpenAssetTools/blob/main/docs/SupportedAssetTypes.md
+
+**Next priority:** verify full archive decompression and indexed asset names with OAT's Unlinker on a small zone. Then design native IW5 world/collision/script runtime; do not silently replace the requested full mode parity with a limited reimagining.

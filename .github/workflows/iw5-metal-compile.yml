@@ -1,0 +1,28 @@
+name: IW5 Metal viewer compile
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/iw5-mw3-foundation]
+    paths:
+      - 'prototypes/iw5-metal/**'
+      - '.github/workflows/iw5-metal-compile.yml'
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Xcode and SDK
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-path
+      - name: Compile Swift sources for real ARM64 iOS SDK
+        run: |
+          SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+          xcrun swiftc -target arm64-apple-ios17.0 -sdk "$SDK" -typecheck \
+            prototypes/iw5-metal/IW5MeshPreviewView.swift \
+            prototypes/iw5-metal/ViewerAppDelegate.swift
+      - name: Completion
+        run: echo "Swift/Metal viewer iPhoneOS typecheck passed; not a device rendering test."

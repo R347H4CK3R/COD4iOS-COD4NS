@@ -84,3 +84,10 @@ This is a repeatable **compression-layer** milestone, not asset linking, world c
 - Counts from `zone/english` and `zone/dlc`: multiplayer candidates **75**, Special Ops candidates **31**, Survival candidates **37**, manual review **83** (226 total).
 - These buckets do not represent final app payloads or complete asset dependency maps. Shared resources may be necessary even when filenames resemble campaign resources.
 - No native IW5 world renderer, script runtime, collision loader, network stack, or playable iOS MW3 binary has been built.
+
+## Expanded IW5 DLC compatibility investigation
+- First 15 alphabetically enumerated `.ff` files under `zone/` tested on PC: **10** decoded completely by the earlier `IWffu100` zlib reader, **5** returned unsupported magic `IWff0100`.
+- Example `zone/dlc/mp_boardwalk.ff` size **80,379,925 bytes**, header begins `IWff0100`. It additionally contains ASCII `IWffs100` near the start, and had no zlib marker in the first 96 bytes. No claim that this format is decoded or decrypted.
+- `tools/iw5/audit_installation.py` now supports read-only bulk validation and reporting.
+- `verify_fastfiles.py` distinguishes the alternate container rather than trying to parse it using the zlib offset for `IWffu100`. A later PC fetch still returned prior version due to apparent cache lag; revised status path not yet verified locally.
+- Next engineering task is to identify and implement lawful, clean IWff0100 parsing. Both archive types need asset-graph decoding before real MW3 gameplay can load.

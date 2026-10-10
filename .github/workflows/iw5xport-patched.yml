@@ -1,0 +1,38 @@
+name: Build patched IW5xport
+on:
+  push:
+    branches: [feature/iw5-mw3-foundation]
+    paths: ['.github/workflows/iw5xport-patched.yml']
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Clone official IW5xport source and submodules
+        shell: pwsh
+        run: git clone --recurse-submodules https://github.com/iw4x/iw5x-port.git iw5xport
+      - name: Correct map command argc and map name index
+        shell: pwsh
+        run: |
+          $file = 'iw5xport/src/module/command.cpp'
+          $src = Get-Content $file -Raw
+          $pattern = '(?s)(add\("map", \[\]\(const params& params\)\s*\{\s*)if \(params\.size\(\) == 1\)(\s*\{\s*const auto map_name = )params\.get\(0\)'
+          $repl = '${1}if (params.size() == 2)${2}params.get(1)'
+          $updated = [regex]::Replace($src, $pattern, $repl)
+          if ($updated -eq $src) { throw 'Map command patch failed to match upstream source' }
+          Set-Content $file $updated
+          git -C iw5xport diff --check
+      - uses: microsoft/setup-msbuild@v2
+      - name: Generate Visual Studio solution
+        shell: pwsh
+        run: |
+          cd iw5xport
+          tools/premake5.exe vs2022
+      - name: Build release Win32
+        shell: pwsh
+        run: msbuild iw5xport/build/open-iw5.sln /m /v:minimal /p:Configuration=Release /p:Platform=Win32
+      - uses: actions/upload-artifact@v4
+        with:
+          name: open-iw5-map-command-fixed
+          path: iw5xport/build/bin/Win32/Release/open-iw5.exe
+          if-no-files-found: error

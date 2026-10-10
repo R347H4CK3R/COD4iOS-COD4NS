@@ -203,7 +203,7 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     UIStackView *_panel;
     NSMutableArray<UIButton *> *_choices;
     BOOL _choosingMode, _running, _pendingShop, _setupInMatch, _setupFromShop;
-    NSInteger _screen; // 0 modes, 1 setup, 2 shop, 3 bank, 4 cheats, 5 weapons, 6 equipment, 7 extras
+    NSInteger _screen; // 1 setup, 2 shop, 3 bank, 4 cheats, 5 weapons, 6 equipment, 7 extras
     unsigned _map, _difficulty, _playerClass;
     unsigned _primary, _secondary, _equipment, _perk;
     UIScrollView *_scroll;
@@ -230,7 +230,7 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
         _hud.translatesAutoresizingMaskIntoConstraints=NO; [self addSubview:_hud];
         _shop=[UIButton buttonWithType:UIButtonTypeSystem]; [_shop setTitle:@"Shop" forState:UIControlStateNormal];
         [_shop addTarget:self action:@selector(openShop) forControlEvents:UIControlEventTouchUpInside];
-        _modes=[UIButton buttonWithType:UIButtonTypeSystem]; [_modes setTitle:@"Modes" forState:UIControlStateNormal];
+        _modes=[UIButton buttonWithType:UIButtonTypeSystem]; [_modes setTitle:@"Setup" forState:UIControlStateNormal];
         [_modes addTarget:self action:@selector(modesPressed) forControlEvents:UIControlEventTouchUpInside];
         for(UIButton *button in @[_shop,_modes]) {
             button.backgroundColor=[UIColor.blackColor colorWithAlphaComponent:.7];
@@ -276,15 +276,26 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     [self clearPanel];
     _shade=[[UIView alloc] initWithFrame:self.bounds];
     _shade.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
-    _shade.backgroundColor=[UIColor.blackColor colorWithAlphaComponent:.88]; [self addSubview:_shade];
-    _panel=[UIStackView new]; _panel.axis=UILayoutConstraintAxisVertical; _panel.spacing=8;
+    _shade.backgroundColor=[UIColor colorWithRed:.035 green:.045 blue:.035 alpha:.98]; [self addSubview:_shade];
+    UIView *accent=[UIView new]; accent.backgroundColor=[UIColor colorWithRed:.64 green:.72 blue:.34 alpha:1];
+    accent.translatesAutoresizingMaskIntoConstraints=NO; [_shade addSubview:accent];
+    [NSLayoutConstraint activateConstraints:@[
+        [accent.leadingAnchor constraintEqualToAnchor:_shade.safeAreaLayoutGuide.leadingAnchor constant:12],
+        [accent.topAnchor constraintEqualToAnchor:_shade.safeAreaLayoutGuide.topAnchor constant:12],
+        [accent.bottomAnchor constraintEqualToAnchor:_shade.safeAreaLayoutGuide.bottomAnchor constant:-12],
+        [accent.widthAnchor constraintEqualToConstant:3]]];
+    _panel=[UIStackView new]; _panel.axis=UILayoutConstraintAxisVertical; _panel.spacing=10;
     _panel.translatesAutoresizingMaskIntoConstraints=NO; _scroll=[UIScrollView new]; _scroll.translatesAutoresizingMaskIntoConstraints=NO; [_shade addSubview:_scroll];
     [_scroll addSubview:_panel];
-    UILabel *heading=[UILabel new]; heading.text=title; heading.textColor=UIColor.whiteColor;
-    heading.font=[UIFont systemFontOfSize:21 weight:UIFontWeightBold]; heading.textAlignment=NSTextAlignmentCenter;
+    UILabel *brand=[UILabel new]; brand.text=@"SPECIAL OPS";
+    brand.textColor=[UIColor colorWithRed:.68 green:.77 blue:.39 alpha:1];
+    brand.font=[UIFont fontWithName:@"AvenirNextCondensed-Heavy" size:38] ?: [UIFont systemFontOfSize:38 weight:UIFontWeightHeavy];
+    brand.textAlignment=NSTextAlignmentLeft; [_panel addArrangedSubview:brand];
+    UILabel *heading=[UILabel new]; heading.text=title.uppercaseString; heading.textColor=UIColor.whiteColor;
+    heading.font=[UIFont fontWithName:@"AvenirNextCondensed-DemiBold" size:25] ?: [UIFont systemFontOfSize:25 weight:UIFontWeightBold]; heading.textAlignment=NSTextAlignmentLeft;
     [_panel addArrangedSubview:heading];
     _detail=[UILabel new]; _detail.text=detail; _detail.textColor=UIColor.lightGrayColor;
-    _detail.numberOfLines=0; _detail.font=[UIFont systemFontOfSize:13]; _detail.textAlignment=NSTextAlignmentCenter;
+    _detail.numberOfLines=0; _detail.font=[UIFont systemFontOfSize:13]; _detail.textAlignment=NSTextAlignmentLeft;
     [_panel addArrangedSubview:_detail];
     UIStackView *cardRow=nil;
     const NSUInteger cardColumns=self.bounds.size.width>=700 ? 4 : 2;
@@ -306,7 +317,11 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
         UIButton *button=[UIButton buttonWithType:UIButtonTypeSystem];
         [button setTitle:titleText forState:UIControlStateNormal]; [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
         button.tag=_choices.count; [button addTarget:self action:@selector(choice:) forControlEvents:UIControlEventTouchUpInside];
-        [button.heightAnchor constraintEqualToConstant:mapCard ? 76 : 38].active=YES;
+        [button.heightAnchor constraintEqualToConstant:mapCard ? 90 : 48].active=YES;
+        button.titleLabel.font=[UIFont fontWithName:@"AvenirNextCondensed-DemiBold" size:19] ?: [UIFont systemFontOfSize:19 weight:UIFontWeightSemibold];
+        button.contentHorizontalAlignment=UIControlContentHorizontalAlignmentLeft;
+        button.contentEdgeInsets=UIEdgeInsetsMake(8,14,8,14);
+        button.layer.borderWidth=1;
         if(mapCard) {
             button.titleLabel.numberOfLines=3;
             button.titleLabel.font=[UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
@@ -317,9 +332,13 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
         [_choices addObject:button];
         if(mapCard) [cardRow addArrangedSubview:button]; else [_panel addArrangedSubview:button];
     }
+    UILabel *controls=[UILabel new];
+    controls.text=@"TOUCH TO SELECT    /    CONTROLLER: A SELECT · B BACK";
+    controls.textColor=[UIColor colorWithWhite:.55 alpha:1]; controls.numberOfLines=0;
+    controls.font=[UIFont systemFontOfSize:11 weight:UIFontWeightMedium]; [_panel addArrangedSubview:controls];
     [NSLayoutConstraint activateConstraints:@[
         [_scroll.centerXAnchor constraintEqualToAnchor:_shade.centerXAnchor],
-        [_scroll.widthAnchor constraintEqualToAnchor:_shade.safeAreaLayoutGuide.widthAnchor multiplier:.85],
+        [_scroll.widthAnchor constraintEqualToAnchor:_shade.safeAreaLayoutGuide.widthAnchor multiplier:.9],
         [_scroll.topAnchor constraintEqualToAnchor:_shade.safeAreaLayoutGuide.topAnchor constant:8],
         [_scroll.bottomAnchor constraintEqualToAnchor:_shade.safeAreaLayoutGuide.bottomAnchor constant:-8],
         [_panel.topAnchor constraintEqualToAnchor:_scroll.contentLayoutGuide.topAnchor],
@@ -332,7 +351,8 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
 
 - (void)highlight {
     for(NSUInteger i=0;i<_choices.count;++i) {
-        _choices[i].backgroundColor=i==_selected ? [UIColor colorWithRed:.24 green:.30 blue:.13 alpha:1] : [UIColor colorWithWhite:.12 alpha:1];
+        _choices[i].backgroundColor=i==_selected ? [UIColor colorWithRed:.36 green:.43 blue:.20 alpha:1] : [UIColor colorWithRed:.07 green:.085 blue:.065 alpha:1];
+        [_choices[i] setTitleColor:i==_selected ? UIColor.whiteColor : [UIColor colorWithWhite:.82 alpha:1] forState:UIControlStateNormal];
         _choices[i].layer.borderColor=(i==_selected ? [UIColor colorWithRed:.72 green:.82 blue:.42 alpha:1] : [UIColor colorWithWhite:.28 alpha:1]).CGColor;
     }
 }
@@ -342,12 +362,19 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
 }
 
 - (void)showModes:(BOOL)running {
+    _running=running; _feedback=nil;
 #ifndef KISAK_MP
-    if(self.modal && (!_choosingMode || ((_screen==1 || _screen>=8) && _setupInMatch))) cod4ios::survival::queueAction(cod4ios::survival::Action::CloseShop,_status.epoch);
+    _status=cod4ios::survival::readStatus();
+    if(_status.active && _status.match.phase!=cod4ios::survival::Phase::GameOver) {
+        if(!cod4ios::survival::queueAction(cod4ios::survival::Action::OpenShop,_status.epoch)) {
+            _hud.text=@"Setup could not open. Try again."; return;
+        }
+        _screen=2; [self showSetup:YES];
+        _shopRequestStatus=_status; _pendingShop=YES; _shopPendingUntil=NSDate.timeIntervalSinceReferenceDate+2;
+    } else { _pendingShop=NO; _screen=1; [self showSetup:_status.active]; }
+#else
+    _screen=1; [self showSetup:NO];
 #endif
-    _running=running; _choosingMode=YES; _screen=0;
-    [self panelTitle:@"COD4iOS" detail:running ? @"Changing between Campaign and Survival reloads level state. Multiplayer requires reopening the app." : @"Touch a mode or use D-pad and A. Original game files must be in Documents."
-                 choices:running ? @[@"Campaign",@"Special Ops Survival",@"Multiplayer",@"Cancel"] : @[@"Campaign",@"Special Ops Survival",@"Multiplayer"]];
 }
 
 - (void)modesPressed { [self showModes:YES]; }
@@ -375,22 +402,24 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
 }
 
 - (void)renderSetup {
-    [self panelTitle:@"SPECIAL OPS / SURVIVAL" detail:_feedback ?: @"Choose a map and persistent class. Original MW3 maps remain locked until native compatibility is complete. Starting reloads the match."
-        choices:@[[NSString stringWithFormat:@"Map: %s%@",cod4ios::survival::mapName(_map),[self mapAvailable:_map] ? @"" : @" (unavailable)"],
-        [NSString stringWithFormat:@"Difficulty: %s",cod4ios::survival::difficultyName(_difficulty)],@"CREATE-A-CLASS",@"START SURVIVAL",@"Back"]];
+    NSString *briefing=[NSString stringWithFormat:@"SOLO OPERATIONS   /   RANK %u   /   BANK $%u\n%@",[self classRank],KisakApple_GetSurvivalBank(),_feedback ?: @"Choose an operation and your saved class."];
+    [self panelTitle:@"SURVIVAL" detail:briefing
+        choices:@[[NSString stringWithFormat:@"SELECT MAP    /    %s%@",cod4ios::survival::mapName(_map),[self mapAvailable:_map] ? @"" : @" — unavailable"],
+        [NSString stringWithFormat:@"DIFFICULTY    /    %s",cod4ios::survival::difficultyName(_difficulty)],@"CREATE-A-CLASS",@"START SURVIVAL",_setupFromShop ? @"BACK TO ARMORY" : _setupInMatch ? @"RESUME" : @"SETUP HELP"]];
+    _selected=3; [self highlight];
 }
 
 - (void)renderMapBrowser {
     _screen=8; _choosingMode=YES;
-    NSArray *maps=@[@"TIER 1 / EASY â€” Resistance",@"TIER 1 / EASY â€” Village",@"TIER 1 / EASY â€” Interchange",@"TIER 1 / EASY â€” Underground",
-        @"TIER 2 / REGULAR â€” Dome",@"TIER 2 / REGULAR â€” Mission",@"TIER 2 / REGULAR â€” Seatown",@"TIER 2 / REGULAR â€” Bootleg",
-        @"TIER 3 / HARDENED â€” Carbon",@"TIER 3 / HARDENED â€” Hardhat",@"TIER 3 / HARDENED â€” Fallen",@"TIER 3 / HARDENED â€” Outpost",
-        @"TIER 4 / VETERAN â€” Lockdown",@"TIER 4 / VETERAN â€” Arkaden",@"TIER 4 / VETERAN â€” Downturn",@"TIER 4 / VETERAN â€” Bakaara"];
+    NSArray *maps=@[@"TIER 1 / EASY — Resistance",@"TIER 1 / EASY — Village",@"TIER 1 / EASY — Interchange",@"TIER 1 / EASY — Underground",
+        @"TIER 2 / REGULAR — Dome",@"TIER 2 / REGULAR — Mission",@"TIER 2 / REGULAR — Seatown",@"TIER 2 / REGULAR — Bootleg",
+        @"TIER 3 / HARDENED — Carbon",@"TIER 3 / HARDENED — Hardhat",@"TIER 3 / HARDENED — Fallen",@"TIER 3 / HARDENED — Outpost",
+        @"TIER 4 / VETERAN — Lockdown",@"TIER 4 / VETERAN — Arkaden",@"TIER 4 / VETERAN — Downturn",@"TIER 4 / VETERAN — Bakaara"];
     NSMutableArray *choices=[NSMutableArray new];
-    for(NSString *name in maps) [choices addObject:[name stringByAppendingString:@"\nLOCKED â€” native map compatibility required"]];
-    for(unsigned i=0;i<5;++i) [choices addObject:[NSString stringWithFormat:@"COD4 EXTENSION â€” %s%@%@",cod4ios::survival::mapName(i),i==_map ? @" â€¢ SELECTED" : @"",[self mapAvailable:i] ? @"" : @" â€¢ unavailable"]];
+    for(NSString *name in maps) [choices addObject:[name stringByAppendingString:@"\nLOCKED — native map compatibility required"]];
+    for(unsigned i=0;i<5;++i) [choices addObject:[NSString stringWithFormat:@"COD4 EXTENSION — %s%@%@",cod4ios::survival::mapName(i),i==_map ? @" • SELECTED" : @"",[self mapAvailable:i] ? @"" : @" • unavailable"]];
     [choices addObject:@"Back"];
-    [self panelTitle:@"SURVIVAL / SELECT MAP" detail:_feedback ?: @"Original MW3 roster above. Playable COD4 extensions below use their own maps; they do not replace Dome or another MW3 map." choices:choices];
+    [self panelTitle:@"SURVIVAL / SELECT MAP" detail:_feedback ?: @"MW3 operations require native map compatibility. Available COD4 additional operations can be played now." choices:choices];
     for(NSUInteger i=0;i<16;++i) { _choices[i].titleLabel.numberOfLines=2; _choices[i].titleLabel.font=[UIFont systemFontOfSize:12 weight:UIFontWeightSemibold]; }
 }
 
@@ -445,8 +474,8 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     NSArray *equipment=@[@"Last Stand",@"Armor",@"Frag + Flash"];
     NSArray *perks=@[@"None",@"Quick Recovery",@"Sleight of Hand"];
     [self panelTitle:@"SURVIVAL / CREATE-A-CLASS" detail:_feedback ?: @"Saved between matches. Applies when you start or retry. MP7 unlocks at rank 13; ACR at rank 14. Converted weapons require their loaded asset pack."
-        choices:@[[NSString stringWithFormat:@"Primary: %@%@",primaries[_primary],[self loadoutWeaponAvailable:_primary secondary:NO] ? @"" : @" â€¢ unavailable"],
-        [NSString stringWithFormat:@"Secondary: %@%@",secondaries[_secondary],[self loadoutWeaponAvailable:_secondary secondary:YES] ? @"" : @" â€¢ unavailable"],
+        choices:@[[NSString stringWithFormat:@"Primary: %@%@",primaries[_primary],[self loadoutWeaponAvailable:_primary secondary:NO] ? @"" : @" • unavailable"],
+        [NSString stringWithFormat:@"Secondary: %@%@",secondaries[_secondary],[self loadoutWeaponAvailable:_secondary secondary:YES] ? @"" : @" • unavailable"],
         [@"Equipment: " stringByAppendingString:equipment[_equipment]],[@"Perk: " stringByAppendingString:perks[_perk]],@"SAVE CLASS",@"Back"]];
 }
 
@@ -455,7 +484,7 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     NSArray *names=screen==10 ? @[@"None",@"MW3 MP7",@"MW3 ACR",@"COD4 M4",@"COD4 AK-47"] : screen==11 ? @[@"MW3 USP .45",@"None"] : screen==12 ? @[@"Last Stand",@"Armor",@"Frag + Flash"] : @[@"None",@"Quick Recovery",@"Sleight of Hand"];
     NSMutableArray *choices=[NSMutableArray new];
     for(NSUInteger i=0;i<names.count;++i) {
-        NSString *lock=screen<=11 && ![self loadoutWeaponAvailable:(unsigned)i secondary:screen==11] ? @" â€¢ LOCKED (pack not loaded)" : screen==10 && ![self loadoutRankAvailable:(unsigned)i] ? (i==1 ? @" â€¢ LOCKED (rank 13)" : @" â€¢ LOCKED (rank 14)") : screen==13 && ![self loadoutPerkAvailable:(unsigned)i] ? (i==1 ? @" â€¢ LOCKED (rank 4)" : @" â€¢ LOCKED (rank 6)") : @"";
+        NSString *lock=screen<=11 && ![self loadoutWeaponAvailable:(unsigned)i secondary:screen==11] ? @" • LOCKED (pack not loaded)" : screen==10 && ![self loadoutRankAvailable:(unsigned)i] ? (i==1 ? @" • LOCKED (rank 13)" : @" • LOCKED (rank 14)") : screen==13 && ![self loadoutPerkAvailable:(unsigned)i] ? (i==1 ? @" • LOCKED (rank 4)" : @" • LOCKED (rank 6)") : @"";
         [choices addObject:[names[i] stringByAppendingString:lock]];
     }
     [choices addObject:@"Back"];
@@ -467,7 +496,7 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
     _screen=screen; _choosingMode=NO;
     if(screen==3) [self panelTitle:@"Survival Bank" detail:@"Transfers use match credits. Bank persists between matches." choices:@[@"Deposit 500",@"Deposit 1000",@"Deposit all",@"Withdraw 500",@"Withdraw 1000",@"Withdraw all",@"Back"]];
     else if(screen==4) [self panelTitle:@"Survival Cheats" detail:@"Cheats apply only to this Survival match." choices:@[@"Toggle invulnerability",@"Toggle infinite ammo",@"Add 10000 credits",@"Skip current wave",@"Back"]];
-    else if(screen==5) [self panelTitle:@"Weapon Armory" detail:@"MW3 ACR requires its converted asset pack. Original game files stay intact." choices:@[@"Refill ammo - 250",@"COD4 AK-47 - 750",@"MW3 USP .45 - 250",@"MW3 MP7 - 2000 (rank 13)",@"MW3 ACR - 3000 (rank 14)",@"Pack-a-Punch - 2000 / 4000 / 6000",@"Back"]];
+    else if(screen==5) [self panelTitle:@"Weapon Armory" detail:@"Choose a weapon or resupply. Converted MW3 weapons require your installed asset pack." choices:@[@"Refill ammo - 250",@"COD4 AK-47 - 750",@"MW3 USP .45 - 250",@"MW3 MP7 - 2000 (rank 13)",@"MW3 ACR - 3000 (rank 14)",@"Pack-a-Punch - 2000 / 4000 / 6000",@"Back"]];
     else if(screen==6) [self panelTitle:@"Equipment Armory" detail:@"Protection for the next fight." choices:@[@"Armor (100 points) - 500",@"Revive protection - 1500 (rank 2)",@"Quick Recovery - 2000 (rank 4)",@"Sleight of Hand - 2500 (rank 6)",@"Back"]];
     else if(screen==7) [self panelTitle:@"Survival Extras" detail:@"Persistent bank and match cheats." choices:@[@"Bank",@"Cheats",@"Back"]];
     else [self panelTitle:@"Survival Armory" detail:@"Opening shop..." choices:@[@"Weapon Armory",@"Equipment Armory",@"Extras",@"Setup (new match)",@"Close shop"]];
@@ -489,19 +518,6 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
 - (void)choice:(UIButton *)button {
     const NSUInteger index=button.tag;
     if(index>=_choices.count) return;
-    if(_screen==0) {
-        if(index>=3) { [self clearPanel]; return; }
-        if(index==1) {
-            _feedback=nil;
-#ifndef KISAK_MP
-            _status=cod4ios::survival::readStatus(); [self showSetup:_status.active];
-#else
-            [self showSetup:NO];
-#endif
-            return;
-        }
-        [self clearPanel]; if(self.modeSelected) self.modeSelected(index==0 ? "campaign" : "multiplayer"); return;
-    }
     if(_screen==8) {
         if(index==21) { _screen=1; _feedback=nil; [self renderSetup]; return; }
         if(index<16) { _feedback=@"This original MW3 map is locked. Its geometry, navigation and native runtime are not compatible yet."; [self renderMapBrowser]; return; }
@@ -531,7 +547,17 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
         if(index==0) { _feedback=nil; [self renderMapBrowser]; return; }
         else if(index==1) _difficulty=(_difficulty+1)%4;
         else if(index==2) { KisakApple_GetSurvivalLoadout(&_primary,&_secondary,&_equipment,&_perk); _feedback=nil; [self renderClass]; return; }
-        else if(index==4) { _feedback=nil; if(_setupFromShop) [self renderShop:2]; else [self showModes:_running]; return; }
+        else if(index==4) {
+            _feedback=nil;
+            if(_setupFromShop) [self renderShop:2];
+            else if(_setupInMatch) {
+#ifndef KISAK_MP
+                cod4ios::survival::queueAction(cod4ios::survival::Action::CloseShop,_status.epoch);
+#endif
+                [self clearPanel];
+            } else { _feedback=@"Choose your operation, then select Start Survival."; [self renderSetup]; }
+            return;
+        }
         else {
             if(![self mapAvailable:_map]) { _feedback=@"Selected map is unavailable. Add its original zone language file to Documents."; [self renderSetup]; return; }
             if(!KisakApple_SetSurvivalConfig(_map,_difficulty,_playerClass)) { _feedback=@"Configuration rejected."; [self renderSetup]; return; }
@@ -637,7 +663,11 @@ BOOL KisakInstallSurvivalContent(NSString *documents,NSError **error) {
             else if(_screen==4) _detail.text=[NSString stringWithFormat:@"Wallet %u - God %@ - Infinite ammo %@\n%@",s.credits,_status.godMode ? @"ON" : @"OFF",_status.infiniteAmmo ? @"ON" : @"OFF",response];
             else _detail.text=[NSString stringWithFormat:@"Wallet %u - Bank %u - Rank %u (%u XP)\nHeld weapon Pack tier %u / 3 - Streak %u\nSupply rewards: 5 ammo / 8 armor / 12 cash 1000\n%@",s.credits,_status.bank,_status.rank,_status.xp,_status.packTier,_status.killstreak,response];
         }
-        if(_screen==5 && _choices.count>=5) [_choices[2] setTitle:!_status.acrAvailable ? @"MW3 ACR - converted pack required" : _status.rank<importedAcrRank ? @"MW3 ACR - LOCKED (rank 14)" : @"MW3 ACR - 3000" forState:UIControlStateNormal];
+        if(_screen==5 && _choices.count>=5) {
+            [_choices[2] setTitle:_status.uspAvailable ? @"MW3 USP .45 - 250" : @"MW3 USP .45 - converted pack required" forState:UIControlStateNormal];
+            [_choices[3] setTitle:!_status.mp7Available ? @"MW3 MP7 - converted pack required" : _status.rank<13 ? @"MW3 MP7 - LOCKED (rank 13)" : @"MW3 MP7 - 2000" forState:UIControlStateNormal];
+            [_choices[4] setTitle:!_status.acrAvailable ? @"MW3 ACR - converted pack required" : _status.rank<importedAcrRank ? @"MW3 ACR - LOCKED (rank 14)" : @"MW3 ACR - 3000" forState:UIControlStateNormal];
+        }
         if(_screen==6 && _choices.count>=4) {
             NSString *revive=_status.reviveReady ? @"Revive protection - READY" : _status.rank<2 ? @"Revive protection - LOCKED (rank 2)" : @"Revive protection - 1500";
             NSString *recovery=_status.quickRecovery ? @"Quick Recovery - ACTIVE" : _status.rank<4 ? @"Quick Recovery - LOCKED (rank 4)" : @"Quick Recovery - 2000";

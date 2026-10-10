@@ -31,6 +31,7 @@ jobs:
           cmake --build build/host --parallel 2
           ctest --test-dir build/host --output-on-failure
           python3 ports/ios/survival/tests/map_target_tests.py
+          python3 ports/ios/survival/tests/frontend_tests.py
           python3 ports/ios/survival/tests/native_actions_tests.py
           python3 ports/ios/survival/tests/reload_timing_tests.py
           python3 ports/ios/survival/tests/imported_weapon_tests.py
@@ -50,6 +51,7 @@ jobs:
           python3 ports/ios/survival/tests/profile_persistence_tests.py
           python3 ports/ios/survival/tests/ui_catalog_tests.py
           python3 ports/ios/survival/tests/class_menu_tests.py
+          python3 ports/ios/survival/tests/mode_preferences_tests.py
       - name: Check native menus for both engines
         run: |
           SDKROOT=$(xcrun --sdk iphoneos --show-sdk-path)

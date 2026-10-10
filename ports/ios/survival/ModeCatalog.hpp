@@ -10,12 +10,11 @@ constexpr Mode fromId(std::string_view id) {
          id=="survival" ? Mode::Survival :
          id=="multiplayer" ? Mode::Multiplayer : Mode::Invalid;
 }
-constexpr Mode fromSavedId(std::string_view value) {
-  if(value=="sp") return Mode::Campaign;
-  if(value=="mp") return Mode::Multiplayer;
-  const Mode parsed=fromId(value);
-  return parsed==Mode::Invalid ? Mode::Campaign : parsed;
-}
+// PC Bot Warfare support does not establish a working iOS IW5 bot runtime.
+// Keep legacy identifiers for compatibility tests and preserved engine code,
+// but only Survival is exposed by this personal build.
+constexpr bool userSelectable(Mode mode) { return mode==Mode::Survival; }
+constexpr Mode fromSavedId(std::string_view) { return Mode::Survival; }
 constexpr const char* id(Mode mode) {
   switch(mode) {
     case Mode::Campaign: return "campaign";

@@ -7,6 +7,9 @@ int main() {
   using namespace cod4ios::modes;
   assert(fromId("survival")==Mode::Survival);
   assert(fromId("unknown")==Mode::Invalid);
+  assert(userSelectable(Mode::Survival));
+  assert(!userSelectable(Mode::Campaign) && !userSelectable(Mode::Multiplayer));
+  for(const char *saved : {"", "sp", "mp", "campaign", "multiplayer", "survival", "bad"}) assert(fromSavedId(saved)==Mode::Survival);
   assert(engine(Mode::Survival)==Engine::SinglePlayer);
   assert(!requiresRestart(Mode::Campaign,Mode::Survival));
   assert(requiresRestart(Mode::Survival,Mode::Multiplayer));

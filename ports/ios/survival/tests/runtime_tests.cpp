@@ -42,9 +42,9 @@ int main() {
     assert(r.session().snapshot().phase == Phase::Fighting);
     assert(r.session().snapshot().spawnRemaining == 9);
     r.shutdown(); assert(r.session().snapshot().phase == Phase::Idle);
-    assert(cod4ios::modes::fromSavedId("sp") == cod4ios::modes::Mode::Campaign);
-    assert(cod4ios::modes::fromSavedId("mp") == cod4ios::modes::Mode::Multiplayer);
-    assert(cod4ios::modes::fromSavedId("bad") == cod4ios::modes::Mode::Campaign);
+    assert(cod4ios::modes::fromSavedId("sp") == cod4ios::modes::Mode::Survival);
+    assert(cod4ios::modes::fromSavedId("mp") == cod4ios::modes::Mode::Survival);
+    assert(cod4ios::modes::fromSavedId("bad") == cod4ios::modes::Mode::Survival);
     kisak::controller::ButtonState buttons;
     buttons.Update(0,true,false);
     assert(buttons.Update(1,true,false).pressed == 1);

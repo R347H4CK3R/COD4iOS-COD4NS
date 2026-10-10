@@ -15,6 +15,10 @@
 #import "touch_controls.h"
 #import "client_patch.h"
 #import "survival_ui.h"
+#include "loading_state.hpp"
+#ifndef KISAK_MP
+#include "../survival/SurvivalConfig.hpp"
+#endif
 #include "../platform/apple_engine_mode.h"
 #ifndef KISAK_MP
 #include "../survival/SurvivalBridge.hpp"
@@ -317,6 +321,12 @@ static void *KISEngineThreadMain(void *argument)
     CADisplayLink *_displayLink;
     KISSurvivalUI *_survivalUI;
     BOOL _modeChosen;
+    UIView *_loadingCover;
+    UILabel *_loadingDetail;
+    UIActivityIndicatorView *_loadingSpinner;
+    UIButton *_loadingEscape;
+    CFTimeInterval _loadingStarted;
+    BOOL _loadingDismissed, _wasSurvivalActive;
 }
 
 - (void)loadView
@@ -330,9 +340,9 @@ static void *KISEngineThreadMain(void *argument)
 {
     [super viewDidLoad];
     _status = [UILabel new];
-    _status.textColor = UIColor.whiteColor;
+    _status.textColor = [UIColor colorWithRed:0.76 green:0.82 blue:0.64 alpha:1];
     _status.numberOfLines = 0;
-    _status.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+    _status.font = [UIFont monospacedSystemFontOfSize:15 weight:UIFontWeightMedium];
     _status.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:_status];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
@@ -341,6 +351,7 @@ static void *KISEngineThreadMain(void *argument)
         [_status.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-24],
         [_status.centerYAnchor constraintEqualToAnchor:safe.centerYAnchor],
     ]];
+    [self buildLoadingPresentation];
     _survivalUI=[[KISSurvivalUI alloc] initWithFrame:self.view.bounds];
     [self.view addSubview:_survivalUI];
     __weak KISEngineViewController *weakSelf=self;
@@ -363,8 +374,11 @@ static void *KISEngineThreadMain(void *argument)
             NSError *error=nil;
             if(survival && !KisakInstallSurvivalContent([strongSelf documentsPath],&error)) {
                 strongSelf->_status.hidden=NO;
-                strongSelf->_status.text=error.localizedDescription; return;
+                strongSelf->_status.text=error.localizedDescription;
+                [strongSelf presentLaunchError:strongSelf->_status.text]; return;
             }
+            if(survival) [strongSelf beginSurvivalLoading];
+            else strongSelf->_loadingCover.hidden=YES;
             cod4ios::survival::requestSinglePlayerMode(survival);
             return;
         }
@@ -373,6 +387,101 @@ static void *KISEngineThreadMain(void *argument)
 #endif
         strongSelf->_modeChosen=YES; [strongSelf startIfReady];
     };
+}
+
+- (void)presentLaunchError:(NSString *)message
+{
+    _loadingCover.hidden=YES; [_loadingSpinner stopAnimating];
+    if(self.presentedViewController) return;
+    UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"Unable to deploy" message:message preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)buildLoadingPresentation
+{
+    _loadingCover=[UIView new]; _loadingCover.translatesAutoresizingMaskIntoConstraints=NO;
+    _loadingCover.backgroundColor=[UIColor colorWithRed:0.035 green:0.045 blue:0.035 alpha:1];
+    _loadingCover.hidden=YES; [self.view addSubview:_loadingCover];
+    [NSLayoutConstraint activateConstraints:@[
+        [_loadingCover.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [_loadingCover.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [_loadingCover.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [_loadingCover.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]]];
+    UIColor *olive=[UIColor colorWithRed:0.65 green:0.73 blue:0.43 alpha:1];
+    UILabel *brand=[UILabel new]; brand.text=@"SPECIAL OPS";
+    brand.font=[UIFont systemFontOfSize:34 weight:UIFontWeightBlack]; brand.textColor=olive;
+    UILabel *title=[UILabel new]; title.text=@"SURVIVAL";
+    title.font=[UIFont systemFontOfSize:22 weight:UIFontWeightLight]; title.textColor=UIColor.whiteColor;
+    UIView *rule=[UIView new]; rule.backgroundColor=olive;
+    [rule.heightAnchor constraintEqualToConstant:2].active=YES;
+    _loadingDetail=[UILabel new]; _loadingDetail.numberOfLines=0;
+    _loadingDetail.font=[UIFont monospacedSystemFontOfSize:14 weight:UIFontWeightRegular];
+    _loadingDetail.textColor=[UIColor colorWithWhite:0.72 alpha:1];
+    _loadingSpinner=[[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    _loadingSpinner.color=olive;
+    _loadingEscape=[UIButton buttonWithType:UIButtonTypeSystem];
+    [_loadingEscape setTitle:@"BACK TO SETUP" forState:UIControlStateNormal];
+    [_loadingEscape setTitleColor:olive forState:UIControlStateNormal];
+    [_loadingEscape addTarget:self action:@selector(leaveLoadingPresentation) forControlEvents:UIControlEventTouchUpInside];
+    [_loadingEscape.heightAnchor constraintEqualToConstant:44].active=YES;
+    UIStackView *stack=[[UIStackView alloc] initWithArrangedSubviews:@[brand,title,rule,_loadingDetail,_loadingSpinner,_loadingEscape]];
+    stack.axis=UILayoutConstraintAxisVertical; stack.spacing=14; stack.alignment=UIStackViewAlignmentFill;
+    stack.translatesAutoresizingMaskIntoConstraints=NO; [_loadingCover addSubview:stack];
+    UILayoutGuide *safe=_loadingCover.safeAreaLayoutGuide;
+    [NSLayoutConstraint activateConstraints:@[
+        [stack.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:40],
+        [stack.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-40],
+        [stack.centerYAnchor constraintEqualToAnchor:safe.centerYAnchor],
+        [stack.topAnchor constraintGreaterThanOrEqualToAnchor:safe.topAnchor constant:12],
+        [stack.bottomAnchor constraintLessThanOrEqualToAnchor:safe.bottomAnchor constant:-12]]];
+}
+
+- (void)beginSurvivalLoading
+{
+    _loadingStarted=CACurrentMediaTime(); _loadingDismissed=NO; _wasSurvivalActive=NO;
+    _loadingCover.hidden=NO; _loadingEscape.hidden=YES;
+    _loadingDetail.text=@"DEPLOYING..."; [_loadingSpinner startAnimating];
+}
+
+- (void)leaveLoadingPresentation
+{
+    _loadingDismissed=YES; _loadingCover.hidden=YES; [_loadingSpinner stopAnimating];
+    [_survivalUI showModes:_started];
+}
+
+- (void)updateLoadingPresentation
+{
+#ifndef KISAK_MP
+    using namespace cod4ios::survival;
+    const auto status=readStatus();
+    const BOOL survival=!strcmp(KisakApple_GetGameMode(),"survival");
+    if(!survival) { _loadingCover.hidden=YES; _wasSurvivalActive=NO; return; }
+    if(_wasSurvivalActive && !status.active && !_loadingDismissed) [self beginSurvivalLoading];
+    _wasSurvivalActive=status.active;
+    if(_loadingCover.hidden) { if(status.active) _loadingDismissed=NO; return; }
+    const auto result=kisak::loading::state(status.active,status.match.phase==Phase::Idle,
+                                            status.match.phase==Phase::GameOver,CACurrentMediaTime()-_loadingStarted);
+    if(result==kisak::loading::Result::Ready || result==kisak::loading::Result::Failed) {
+        _loadingCover.hidden=YES; [_loadingSpinner stopAnimating]; return;
+    }
+    unsigned map=0,difficulty=1,playerClass=0;
+    KisakApple_GetSurvivalConfig(&map,&difficulty,&playerClass);
+    NSString *message=[NSString stringWithUTF8String:status.message] ?: @"";
+    _loadingDetail.text=[NSString stringWithFormat:@"%s / %s\n\n%@",mapName(map),difficultyName(difficulty),
+        message.length ? message : @"DEPLOYING... Preparing the combat zone."];
+    _loadingEscape.hidden=CACurrentMediaTime()-_loadingStarted<8.0;
+    // Do not manufacture a percent: engine loading does not expose progress.
+    if(result==kisak::loading::Result::TimedOut) {
+        NSString *detail=[_loadingDetail.text stringByAppendingString:@"\n\nDeployment did not finish. Choose a map in Setup to retry."];
+        [self leaveLoadingPresentation];
+        if(!self.presentedViewController) {
+            UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"Deployment interrupted" message:detail preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+            [self presentViewController:alert animated:YES completion:nil];
+        }
+    }
+#endif
 }
 
 - (NSString *)documentsPath
@@ -407,6 +516,7 @@ static void *KISEngineThreadMain(void *argument)
         _status.text = @"Game files not found.\n\nConnect the iPhone to your Mac, open it in Finder, choose Files → COD4iOS, "
                        @"and copy in the contents of your Call of Duty 4 folder: localization.txt, main and zone. "
                        @"Then reopen the app.";
+        [self presentLaunchError:_status.text];
         return;
     }
 #ifndef KISAK_MP
@@ -414,6 +524,7 @@ static void *KISEngineThreadMain(void *argument)
         NSError *error=nil;
         if(!KisakInstallSurvivalContent(root,&error)) {
             _status.text=[NSString stringWithFormat:@"Survival content could not be prepared: %@",error.localizedDescription];
+            [self presentLaunchError:_status.text];
             return;
         }
     }
@@ -435,6 +546,9 @@ static void *KISEngineThreadMain(void *argument)
     }
 #endif
     _started = YES;
+#ifndef KISAK_MP
+    if(!strcmp(KisakApple_GetGameMode(),"survival")) [self beginSurvivalLoading];
+#endif
     CGFloat scale = self.view.window.screen.nativeScale;
 #if TARGET_OS_SIMULATOR
     // Optional test setting: reduce render targets on memory-constrained Macs
@@ -501,6 +615,7 @@ static void *KISEngineThreadMain(void *argument)
         _controllerInput.survivalUI=_survivalUI;
         _touchControls=[[KISTouchControls alloc] initWithFrame:self.view.bounds];
         [self.view addSubview:_touchControls];
+        [self.view bringSubviewToFront:_loadingCover];
         [self.view bringSubviewToFront:_survivalUI];
         _controllerInput.touchControls=_touchControls;
         __weak KISControllerInput *input=_controllerInput;
@@ -516,8 +631,12 @@ static void *KISEngineThreadMain(void *argument)
         [_engineView addGestureRecognizer:twoFingerTap];
         [NSTimer scheduledTimerWithTimeInterval:0.2 target:self selector:@selector(syncKeyboard) userInfo:nil repeats:YES];
     }
-    else
+    else {
+        _started=NO; _loadingCover.hidden=YES; _status.hidden=NO;
         _status.text = @"Could not start the engine thread.";
+        [_survivalUI showModes:NO];
+        [self presentLaunchError:_status.text];
+    }
     pthread_attr_destroy(&attributes);
 }
 
@@ -525,6 +644,7 @@ static void *KISEngineThreadMain(void *argument)
 {
     (void)link; // Engine frames are uncapped and paced only by available Metal drawables.
     [_survivalUI update];
+    [self updateLoadingPresentation];
 }
 
 - (void)syncKeyboard

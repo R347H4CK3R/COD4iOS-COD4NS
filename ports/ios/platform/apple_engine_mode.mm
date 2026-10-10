@@ -14,7 +14,7 @@ static NSString *const kModeKey = @"KisakEngineMode";
 void KisakApple_SetEngineMode(const char *mode)
 {
     if(!mode) return;
-    if(!strcmp(mode,"sp")) KisakApple_SetGameMode("campaign");
+    if(!strcmp(mode,"sp")) KisakApple_SetGameMode("survival");
     else if(!strcmp(mode,"mp")) KisakApple_SetGameMode("multiplayer");
 }
 
@@ -26,7 +26,7 @@ const char *KisakApple_GetEngineMode()
 }
 
 bool KisakApple_SetGameMode(const char *mode) {
-    if(!mode || cod4ios::modes::fromId(mode)==cod4ios::modes::Mode::Invalid) return false;
+    if(!mode || !cod4ios::modes::userSelectable(cod4ios::modes::fromId(mode))) return false;
     @autoreleasepool {
         [NSUserDefaults.standardUserDefaults setObject:[NSString stringWithUTF8String:mode] forKey:kModeKey];
         return true;

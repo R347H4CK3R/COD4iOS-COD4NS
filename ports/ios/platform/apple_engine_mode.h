@@ -5,7 +5,7 @@ extern "C" {
 // "sp" or "mp": which engine dylib the launcher loads on the next start.
 void KisakApple_SetEngineMode(const char *mode);
 const char *KisakApple_GetEngineMode();
-// Stable UI mode IDs: campaign, survival, multiplayer. Invalid requests are rejected.
+// This personal build accepts Survival only; legacy saved modes route to Survival.
 bool KisakApple_SetGameMode(const char *mode);
 const char *KisakApple_GetGameMode();
 unsigned KisakApple_GetSurvivalBestWave();

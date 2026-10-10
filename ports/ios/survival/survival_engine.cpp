@@ -358,7 +358,7 @@ void KisakSurvival_Frame() {
         }
         if(now-lastProgress>20000 && snapshot.alive==0) {
             failed=true; runtime.session().onPlayerDied();
-            message("Enemies cannot reach a safe spawn point. Retry or return to Campaign.");
+            message("Enemies cannot reach a safe spawn point. Retry or choose another map in Setup.");
         }
     } else if(snapshot.phase==Phase::Intermission) lastProgress=now;
     publish();

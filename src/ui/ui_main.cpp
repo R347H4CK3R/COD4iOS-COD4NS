@@ -2391,6 +2391,12 @@ void __cdecl UI_RunMenuScript(int localClientNum, const char **args, const char 
         Cbuf_AddText(0, "disconnect\n");
         CL_SetActive();
         Menus_CloseAll(&uiInfo.uiDC);
+#ifdef __APPLE__
+        extern bool KisakSurvival_IsSelected();
+        if (KisakSurvival_IsSelected())
+            UI_SetActiveMenu(localClientNum, UIMENU_MAIN);
+        else
+#endif
         Menus_OpenByName(&uiInfo.uiDC, "main");
         return;
     }
@@ -2508,6 +2514,14 @@ int __cdecl UI_SetActiveMenu(int localClientNum, uiMenuCommand_t menu)
         goto LABEL_10;
     case UIMENU_MAIN:
         Key_SetCatcher(0, 16);
+#ifdef __APPLE__
+        // The native Survival launcher owns the front end. Keep the stock UI
+        // catcher and error popup so disconnects and failed loads still work.
+        extern bool KisakSurvival_IsSelected();
+        if (KisakSurvival_IsSelected())
+            Menus_CloseAll(&uiInfo.uiDC);
+        else
+#endif
         Menus_OpenByName(&uiInfo.uiDC, "main");
         String = Dvar_GetString("com_errorMessage");
         if (*String)

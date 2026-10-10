@@ -77,3 +77,10 @@ These results distinguish the user's *x86-era* installed content from the x64 re
 All three had `trailing_bytes=0`; hashes were computed and displayed by the tool. Four synthetic tests in `tests/iw5/test_fastfile_validation.py` passed on the connected Windows PC.
 
 This is a repeatable **compression-layer** milestone, not asset linking, world construction, mode execution, native iOS rendering, or multiplayer support. Retain the full original parity target (MW3 multiplayer + Spec Ops + Survival, DLC; no campaign).
+
+## Mode scoping and CI (October 10, 2026)
+- `.github/workflows/iw5-validation.yml`: CI workflow for Python compilation and synthetic fastfile tests; workflow file committed, remote GitHub run not yet confirmed.
+- `tools/iw5/mode_inventory.py`: a read-only, conservative filename classification tool, executed against the Windows PC installation.
+- Counts from `zone/english` and `zone/dlc`: multiplayer candidates **75**, Special Ops candidates **31**, Survival candidates **37**, manual review **83** (226 total).
+- These buckets do not represent final app payloads or complete asset dependency maps. Shared resources may be necessary even when filenames resemble campaign resources.
+- No native IW5 world renderer, script runtime, collision loader, network stack, or playable iOS MW3 binary has been built.

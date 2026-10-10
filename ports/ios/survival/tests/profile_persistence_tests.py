@@ -32,6 +32,28 @@ int main() { @autoreleasepool {
  [testDefaults setObject:@{@"version":@1,@"map":@99,@"difficulty":@99,@"playerClass":@99} forKey:@"KisakSurvivalConfig"]; config(0,1,0);
  [testDefaults setObject:@{@"version":@1,@"map":@"4",@"difficulty":@(-1),@"playerClass":@1.5} forKey:@"KisakSurvivalConfig"]; config(0,1,0);
  KisakApple_GetSurvivalConfig(nullptr,nullptr,nullptr);
+ assert(!KisakApple_HasSurvivalMW3XP() && KisakApple_GetSurvivalMW3XP()==0);
+ KisakApple_StoreSurvivalMW3XP(0); assert(KisakApple_HasSurvivalMW3XP() && KisakApple_GetSurvivalMW3XP()==0);
+ KisakApple_StoreSurvivalMW3XP(12345); assert(KisakApple_GetSurvivalMW3XP()==12345);
+ KisakApple_StoreSurvivalMW3XP(UINT_MAX); assert(KisakApple_GetSurvivalMW3XP()==1000000000);
+ for(id bad in @[@"bad",@{@"version":@2,@"xp":@100},@{@"version":@1,@"xp":@"100"},@{@"version":@1,@"xp":@(-1)},@{@"version":@1,@"xp":@1.5},@{@"version":@1}]) {
+  [testDefaults setObject:bad forKey:@"KisakSurvivalMW3XP"]; assert(!KisakApple_HasSurvivalMW3XP() && KisakApple_GetSurvivalMW3XP()==0);
+ }
+ auto loadout=[](unsigned p,unsigned s,unsigned e,unsigned k) { unsigned ap=99,as=99,ae=99,ak=99; KisakApple_GetSurvivalLoadout(&ap,&as,&ae,&ak); assert(ap==p && as==s && ae==e && ak==k); };
+ [testDefaults removeObjectForKey:@"KisakSurvivalConfig"]; loadout(0,0,0,0);
+ KisakApple_StoreSurvivalProgress(888,999);
+ for(unsigned c=0;c<3;++c) { assert(KisakApple_SetSurvivalConfig(4,3,c)); loadout(c==1?4:3,0,c==2?1:0,0); }
+ assert(KisakApple_SetSurvivalLoadout(2,1,2,2)); loadout(2,1,2,2);
+ config(4,3,2); assert(KisakApple_GetSurvivalBank()==888 && KisakApple_GetSurvivalXP()==999);
+ assert(!KisakApple_SetSurvivalLoadout(5,1,2,2)); loadout(2,1,2,2);
+ assert(!KisakApple_SetSurvivalLoadout(2,2,2,2)); loadout(2,1,2,2);
+ assert(!KisakApple_SetSurvivalLoadout(2,1,3,2)); loadout(2,1,2,2);
+ assert(!KisakApple_SetSurvivalLoadout(2,1,2,3)); loadout(2,1,2,2);
+ for(id bad in @[@"bad",@[],@{@"version":@2},@{@"version":@1,@"primary":@5,@"secondary":@0,@"equipment":@0,@"perk":@0},@{@"version":@1,@"primary":@0,@"secondary":@0,@"equipment":@0,@"perk":@1.5},@{@"version":@1,@"primary":@"2",@"secondary":@0,@"equipment":@0,@"perk":@0}]) {
+  [testDefaults setObject:bad forKey:@"KisakSurvivalLoadout"]; loadout(0,0,0,0);
+ }
+ KisakApple_GetSurvivalLoadout(nullptr,nullptr,nullptr,nullptr);
+ assert(KisakApple_GetSurvivalBank()==888 && KisakApple_GetSurvivalXP()==999); config(4,3,2);
  [testDefaults removePersistentDomainForName:suite];
  } }
 '''
@@ -43,4 +65,3 @@ with tempfile.TemporaryDirectory(prefix='survival-profile-test-') as directory:
  subprocess.run(['xcrun','clang++','-std=c++17','-fobjc-arc','-framework','Foundation','-I',str(root),str(code),'-o',str(exe)],check=True)
  subprocess.run([str(exe)],check=True)
 print('Survival profile/config preferences: production validation, caps and atomic records passed')
-

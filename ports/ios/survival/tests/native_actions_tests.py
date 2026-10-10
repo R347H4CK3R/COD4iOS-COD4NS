@@ -30,6 +30,10 @@ Killstreaks killstreaks; std::atomic<bool> fastReloadEnabled{false};
 int lastDamage=0, lastRecovery=0, reviveUntil=0;
 bool active=true, mode=true, grantWorks=true;
 bool selected() { return mode; }
+unsigned mw3XP=0;
+unsigned currentRank() { return rankForXP(profile.xp); }
+void addMW3XP(unsigned amount) { mw3XP+=amount; }
+bool grantWeapon(const char*) { return grantWorks; }
 struct Dvar { struct { int integer=0; } current; } pauseValue;
 const Dvar* cl_paused=&pauseValue;
 void Dvar_SetInt(const Dvar* d,int value) { const_cast<Dvar*>(d)->current.integer=value; }

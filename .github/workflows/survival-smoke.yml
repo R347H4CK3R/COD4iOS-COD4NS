@@ -34,8 +34,12 @@ jobs:
           python3 tools/mw3_maps/test_export_oat_world.py
           python3 tools/mw3_maps/test_export_oat_collision.py
           python3 tools/mw3_maps/test_export_oat_navigation.py
+          python3 tools/mw3_maps/test_export_oat_brushes.py
+          python3 tools/mw3_maps/test_translate_entities.py
+          python3 tools/mw3_maps/native_brush_adapter_tests.py
           python3 tools/mw3_scripts/test_analyze.py
           python3 tools/mw3_weapons/test_conversion.py
+          python3 -B -m unittest discover -s tools/mw3_world -p "test_*.py" -v
           python3 tools/test_bundle_mw3_assets.py
           python3 ports/ios/survival/tests/manual_retry_tests.py
           python3 ports/ios/survival/tests/save_isolation_tests.py

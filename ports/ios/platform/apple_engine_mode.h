@@ -15,6 +15,12 @@ unsigned KisakApple_GetSurvivalXP();
 void KisakApple_StoreSurvivalProgress(unsigned bank, unsigned xp);
 void KisakApple_GetSurvivalConfig(unsigned *map, unsigned *difficulty, unsigned *playerClass);
 bool KisakApple_SetSurvivalConfig(unsigned map, unsigned difficulty, unsigned playerClass);
+// Persistent Create-a-Class indices, independent of Campaign and match rewards.
+void KisakApple_GetSurvivalLoadout(unsigned *primary, unsigned *secondary, unsigned *equipment, unsigned *perk);
+bool KisakApple_SetSurvivalLoadout(unsigned primary, unsigned secondary, unsigned equipment, unsigned perk);
+bool KisakApple_HasSurvivalMW3XP();
+unsigned KisakApple_GetSurvivalMW3XP();
+void KisakApple_StoreSurvivalMW3XP(unsigned xp);
 void KisakApple_PromptEngineRestart(const char *mode);
 #ifdef __cplusplus
 }

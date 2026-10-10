@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -32,6 +33,27 @@ class BundleTests(unittest.TestCase):
                 self.assertEqual(z.read('Payload/KisakCOD.app/KisakCOD'),b'unchanged launcher')
             with self.assertRaises(ValueError):module.bundle(ipa,assets,ipa)
             with self.assertRaises(ValueError):module.bundle(ipa,assets,output)
+
+    def test_pregame_catalog_from_verified_local_pack(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); assets=root/'assets';assets.mkdir()
+            (assets/'mod.ff').write_bytes(b'converted')
+            (assets/'verification.json').write_text(json.dumps({'weapons':['mw3_usp45','mw3_mp7','mw3_acr']}))
+            with zipfile.ZipFile(assets/'z_mw3_rules.iwd','w') as z:
+                z.writestr('mw3/survival/rank.csv','idx,name,xp\n'+''.join(f'{i},TEST,{i*100}\n' for i in range(50)))
+            ipa=root/'input.ipa'
+            with zipfile.ZipFile(ipa,'w') as z:
+                z.writestr(module.PREFIX+'maps/specops_survival_v4.gsc','script')
+                for engine in ('sp','mp'):
+                    z.writestr('Payload/KisakCOD.app/Frameworks/libkisakcod_'+engine+'.dylib',b'engine MW3Assets.json')
+            module.bundle(ipa,assets,root/'personal.ipa')
+            with zipfile.ZipFile(root/'personal.ipa') as z:
+                catalog=json.loads(z.read(module.PREFIX+'MW3Catalog.json'))
+                self.assertEqual(catalog['weapons'],['mw3_usp45','mw3_mp7','mw3_acr'])
+                self.assertEqual(catalog['rankThresholds'],list(range(0,5000,100)))
+            (assets/'verification.json').write_text(json.dumps({'weapons':['not_verified']}))
+            with self.assertRaises(ValueError):module.bundle(ipa,assets,root/'invalid.ipa')
+            self.assertFalse((root/'invalid.ipa').exists())
 
     def test_rejects_incomplete_pack(self):
         with tempfile.TemporaryDirectory() as directory:

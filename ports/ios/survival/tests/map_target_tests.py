@@ -21,6 +21,8 @@ code=r'''#include <cassert>
 #include "ports/ios/survival/SurvivalConfig.hpp"
 using namespace cod4ios::survival;
 Config config; unsigned selectedMap=0, selectedClass=0;
+unsigned primary=0,secondary=0,equipment=0,perk=0;
+void KisakApple_GetSurvivalLoadout(unsigned*,unsigned*,unsigned*,unsigned*) {}
 void KisakApple_GetSurvivalConfig(unsigned* map,unsigned* difficulty,unsigned* playerClass) { *map=selectedMap; *difficulty=1; *playerClass=selectedClass; }
 '''+extract('void loadConfig()')+extract('const char *reloadCommand(')+extract('const char *KisakSurvival_StartupCommand()')+r'''
 int main() {

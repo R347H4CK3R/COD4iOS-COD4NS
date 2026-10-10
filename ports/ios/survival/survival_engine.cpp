@@ -6,6 +6,7 @@
 #include "SurvivalUpgrades.hpp"
 #include "SurvivalBridge.hpp"
 #include "SurvivalArmory.hpp"
+#include "SurvivalMW3Rules.hpp"
 #include "../platform/apple_engine_mode.h"
 #include <database/database.h>
 #include <game/g_main.h>
@@ -27,6 +28,7 @@
 #include <array>
 #include <atomic>
 
+bool importedWeaponAssetPresent(const char *name);
 namespace {
 using namespace cod4ios::survival;
 Runtime runtime;
@@ -38,6 +40,24 @@ unsigned nextSpawner=0;
 bool active=false, failed=false;
 Config config;
 Profile profile;
+mw3::Program mw3Rules;
+unsigned mw3XP=0, primary=0, secondary=0, equipment=0, perk=0;
+bool loadoutValid=false;
+unsigned currentRank() { return mw3Rules.ready() ? mw3Rules.rankForXP(mw3XP) : 1; }
+void addMW3XP(unsigned amount) { mw3XP+=std::min(amount,1000000000u-mw3XP); }
+void loadMW3Rules() {
+    if(mw3Rules.ready()) return;
+    auto read=[](const char *name) {
+        void *bytes=nullptr; int length=FS_ReadFile(name,&bytes); std::string text;
+        if(bytes && length>0 && length<=4*1024*1024) text.assign(static_cast<char*>(bytes),length);
+        if(bytes) FS_FreeFile(static_cast<char*>(bytes)); return text;
+    };
+    auto ranks=read("mw3/survival/rank.csv"), waves=read("mw3/survival/tier2.csv"), armoryTable=read("mw3/survival/armory.csv");
+    std::string error;
+    if(!mw3Rules.load(ranks,waves,armoryTable,error)) return;
+    if(!KisakApple_HasSurvivalMW3XP()) KisakApple_StoreSurvivalMW3XP(mw3Rules.xpForRank(rankForXP(KisakApple_GetSurvivalXP())));
+    mw3XP=KisakApple_GetSurvivalMW3XP();
+}
 PauseLease pauseLease;
 WeaponUpgrades upgrades;
 Armory armory;
@@ -56,6 +76,7 @@ void syncPause() {
 void loadConfig() {
     KisakApple_GetSurvivalConfig(&config.map,&config.difficulty,&config.playerClass);
     config.sanitize();
+    KisakApple_GetSurvivalLoadout(&primary,&secondary,&equipment,&perk);
 }
 const char *reloadCommand(bool restartRenderer=false) {
     loadConfig();
@@ -65,15 +86,17 @@ const char *reloadCommand(bool restartRenderer=false) {
     return command;
 }
 void profileStatus() {
-    status.bank=profile.bank; status.xp=profile.xp; status.rank=rankForXP(profile.xp);
+    status.bank=profile.bank; status.xp=mw3XP; status.rank=currentRank();
     status.map=config.map; status.difficulty=config.difficulty; status.playerClass=config.playerClass;
     status.packTier=g_entities[0].client ? upgrades.tier(g_entities[0].client->ps.weapon) : 0;
     status.reviveReady=armory.reviveReady(); status.quickRecovery=armory.recoveryEnabled();
     status.fastReload=armory.fastReloadEnabled(); status.killstreak=killstreaks.count();
-    const unsigned acr=BG_FindWeaponIndexForName("mw3_acr");
-    status.acrAvailable=acr>0 && acr<128 && acr<BG_GetNumWeapons();
+    status.acrAvailable=importedWeaponAssetPresent("mw3_acr");
+    status.uspAvailable=importedWeaponAssetPresent("mw3_usp45");
+    status.mp7Available=importedWeaponAssetPresent("mw3_mp7");
+    status.mw3RulesAvailable=mw3Rules.ready();
 }
-void persistProfile() { KisakApple_StoreSurvivalProgress(profile.bank,profile.xp); profileStatus(); }
+void persistProfile() { KisakApple_StoreSurvivalProgress(profile.bank,profile.xp); if(mw3Rules.ready()) KisakApple_StoreSurvivalMW3XP(mw3XP); profileStatus(); }
 void updateRecovery(int now) {
     const auto phase=runtime.session().snapshot().phase;
     if(!armory.recoveryEnabled() || (phase!=Phase::Fighting && phase!=Phase::Intermission) || now-lastDamage<2000 || now-lastRecovery<250) return;
@@ -90,6 +113,14 @@ void updateRecovery(int now) {
 bool selected() { const char *value=std::getenv("KISAK_SURVIVAL_MODE"); return value && !std::strcmp(value,"1"); }
 void message(const char *text) { std::snprintf(status.message,sizeof(status.message),"%s",text); ++status.noticeSerial; }
 void publish() { status.match=runtime.session().snapshot(); status.active=active; profileStatus(); publishStatus(status); }
+bool grantWeapon(const char *name) {
+    auto *player=&g_entities[0];
+    if(!player->r.inuse || !player->client || player->health<=0 || !importedWeaponAssetPresent(name)) return false;
+    unsigned weapon=BG_FindWeaponIndexForName(name); auto &ps=player->client->ps;
+    if(!weapon || weapon>=128 || weapon>=BG_GetNumWeapons() || (ps.weapons[weapon>>5]&(1u<<(weapon&31)))) return false;
+    if(!G_GivePlayerWeapon(&ps,weapon,0)) return false;
+    Add_Ammo(player,weapon,0,999,1); return true;
+}
 bool grant(Purchase item) {
     gentity_s *player=&g_entities[0];
     if(!player->r.inuse || !player->client || player->health<=0) return false;
@@ -106,6 +137,7 @@ bool grant(Purchase item) {
         }
         return changed;
     }
+    if(item==Purchase::ACR && !importedWeaponAssetPresent("mw3_acr")) return false;
     const unsigned rifle=BG_FindWeaponIndexForName(item==Purchase::ACR ? "mw3_acr" : "ak47");
     if(!rifle || rifle>=128 || (ps.weapons[rifle>>5] & (1u<<(rifle&31)))) return false;
     if(!G_GivePlayerWeapon(&ps,rifle,0)) return false;
@@ -131,11 +163,16 @@ void processActions() {
         bool success=false;
         switch(request.action) {
         case Action::Ammo: case Action::Armor: case Action::Rifle: case Action::ACR: {
-            if(request.action==Action::ACR && rankForXP(profile.xp)<importedAcrRank) {
+            if(request.action==Action::ACR && currentRank()<importedAcrRank) {
                 message("MW3 ACR unlocks at rank 14."); continue;
             }
             const Purchase item=request.action==Action::Ammo ? Purchase::Ammo : request.action==Action::Armor ? Purchase::Armor : request.action==Action::ACR ? Purchase::ACR : Purchase::Rifle;
             success=runtime.session().tryPurchase(item,[&]{return grant(item);}); break;
+        }
+        case Action::USP45: case Action::MP7: {
+            bool mp7=request.action==Action::MP7;
+            if(currentRank()<(mp7?13u:1u)) { message("Weapon rank requirement not met."); continue; }
+            success=runtime.session().trySpend(mp7?2000u:250u,[&]{return grantWeapon(mp7?"mw3_mp7":"mw3_usp45");}); break;
         }
         case Action::Deposit: success=deposit(runtime.session(),profile,request.amount); if(success) persistProfile(); break;
         case Action::Withdraw: success=withdraw(runtime.session(),profile,request.amount); if(success) persistProfile(); break;
@@ -145,7 +182,7 @@ void processActions() {
                 const bool revive=request.action==Action::Revive;
                 const bool reload=request.action==Action::FastReload;
                 success=runtime.session().trySpend(revive ? Armory::reviveCost : reload ? Armory::fastReloadCost : Armory::recoveryCost,[&]{
-                    const unsigned rank=rankForXP(profile.xp);
+                    const unsigned rank=currentRank();
                     return revive ? armory.buyRevive(rank) : reload ? armory.buyFastReload(rank) : armory.buyRecovery(rank);
                 });
                 if(success) fastReloadEnabled.store(armory.fastReloadEnabled(),std::memory_order_relaxed);
@@ -188,19 +225,34 @@ void processActions() {
 
 }
 
-bool importedAcrAssetPresent() {
-    bool found=false;
+bool importedWeaponAssetPresent(const char *name) {
+    struct Search {const char *name; bool found=false;} search{name};
     DB_EnumXAssets(ASSET_TYPE_WEAPON,[](XAssetHeader header,void *context){
-        if(header.weapon && header.weapon->szInternalName && !std::strcmp(header.weapon->szInternalName,"mw3_acr"))
-            *static_cast<bool*>(context)=true;
-    },&found,false);
-    return found;
+        auto &search=*static_cast<Search*>(context);
+        if(header.weapon && header.weapon->szInternalName && !std::strcmp(header.weapon->szInternalName,search.name)) search.found=true;
+    },&search,false);
+    return search.found;
+}
+bool importedAcrAssetPresent() { return importedWeaponAssetPresent("mw3_acr"); }
+bool validateLoadout() {
+    return primary<5 && secondary<2 && equipment<3 && perk<3 && (primary || secondary==0)
+        && (primary!=1 || (currentRank()>=13 && importedWeaponAssetPresent("mw3_mp7")))
+        && (primary!=2 || (currentRank()>=14 && importedWeaponAssetPresent("mw3_acr")))
+        && (secondary!=0 || importedWeaponAssetPresent("mw3_usp45"))
+        && (perk!=1 || currentRank()>=4) && (perk!=2 || currentRank()>=6);
 }
 const char *KisakSurvival_LevelScript(const char *original) {
     if(!selected()) return original;
-    // Enumerate existing records without creating a missing/default weapon.
-    Dvar_SetIntByName("kisak_survival_acr",importedAcrAssetPresent() ? 1 : 0);
-    return "maps/specops_survival_v3";
+    loadMW3Rules(); loadConfig();
+    Dvar_SetIntByName("kisak_survival_acr",importedWeaponAssetPresent("mw3_acr"));
+    Dvar_SetIntByName("kisak_survival_usp",importedWeaponAssetPresent("mw3_usp45"));
+    Dvar_SetIntByName("kisak_survival_mp7",importedWeaponAssetPresent("mw3_mp7"));
+    loadoutValid=validateLoadout();
+    Dvar_SetIntByName("kisak_survival_loadout_valid",loadoutValid);
+    Dvar_SetIntByName("kisak_survival_primary",primary);
+    Dvar_SetIntByName("kisak_survival_secondary",secondary);
+    Dvar_SetIntByName("kisak_survival_equipment",equipment);
+    return "maps/specops_survival_v4";
 }
 const char *KisakSurvival_SaveGameDirectory() { return selected() ? "mods/specops_survival/players" : "players"; }
 bool KisakSurvival_IsSelected() { return selected(); }
@@ -216,7 +268,11 @@ void KisakSurvival_Begin() {
     if(!selected()) return;
     loadConfig(); profile={KisakApple_GetSurvivalBank(),KisakApple_GetSurvivalXP()}; profile.sanitize();
     active=true; runtime.session().configureReward(killReward(config.difficulty)); runtime.begin();
-    status.armor=config.playerClass==2 ? 100 : 0;
+    status.armor=loadoutValid && equipment==1 ? 100 : 0;
+    if(loadoutValid && equipment==0) armory.buyRevive(2); // Original starter Last Stand is rank 1.
+    if(loadoutValid && perk==1) armory.buyRecovery(currentRank());
+    if(loadoutValid && perk==2) armory.buyFastReload(currentRank());
+    fastReloadEnabled.store(armory.fastReloadEnabled(),std::memory_order_relaxed);
     status.bestWave=KisakApple_GetSurvivalBestWave();
     lastTime=nextSpawn=lastProgress=lastAmmo=level.time; nextSpawner=0; awardedCompletedWave=0;
     // The type scripts already ran their spawner setup and precaches during G_LoadLevel.
@@ -228,7 +284,10 @@ void KisakSurvival_Begin() {
             spawners.push_back(i);
         else if(ent.actor && ent.sentient && ent.sentient->eTeam==TEAM_AXIS) G_FreeEntity(&ent);
     }
-    if(spawners.empty()) {
+    if(!loadoutValid) {
+        failed=true; runtime.session().onPlayerDied();
+        message("Saved class unavailable: check weapon pack and rank in Create-a-Class.");
+    } else if(spawners.empty()) {
         failed=true; runtime.session().onPlayerDied();
         message("This map has no compatible hostile spawners. Choose another map in Setup.");
     } else message("Shop pauses the match at any time. Controller: D-pad up opens Shop.");
@@ -256,7 +315,7 @@ void KisakSurvival_Frame() {
         const unsigned bonus=rewards.completeWave(snapshot.bestCompletedWave);
         runtime.session().addCredits(bonus);
         if(bonus) { char text[192]; std::snprintf(text,sizeof(text),"Wave clear! +$%u completion / flawless bonus.",bonus); message(text); }
-        profile.addXP(killReward(config.difficulty)); persistProfile();
+        addMW3XP(killReward(config.difficulty)); persistProfile();
     }
     if(snapshot.phase==Phase::GameOver) { status.shopOpen=false; syncPause(); }
     if(status.infiniteAmmo && now-lastAmmo>=100) { grant(Purchase::Ammo); lastAmmo=now; }
@@ -309,14 +368,15 @@ void KisakSurvival_EnemyDied(gentity_s *enemy,gentity_s *attacker) {
     const unsigned slot=static_cast<unsigned>(enemy->s.number);
     if(slot>=generations.size()) return;
     const bool playerKill=attacker==&g_entities[0] && attacker->client;
-    if(runtime.killed(slot,generations[slot],playerKill) && playerKill && runtime.session().snapshot().phase==Phase::Fighting) {
+    const bool fighting=runtime.session().snapshot().phase==Phase::Fighting;
+    if(runtime.killed(slot,generations[slot],playerKill) && playerKill && fighting) {
         const unsigned bonus=rewards.kill(); runtime.session().addCredits(bonus);
         if(bonus) message("Kill chain! +$100.");
         const unsigned support=killstreaks.kill();
         if(support & Killstreaks::Supply) { grant(Purchase::Ammo); message("5-kill streak: ammo supply delivered."); }
         if(support & Killstreaks::Armor) { status.armor=100; message("8-kill streak: armor supply delivered."); }
         if(support & Killstreaks::ReserveCash) { runtime.session().addCredits(1000); message("12-kill streak: +$1000 support reserve."); }
-        profile.addXP(killXP(config.difficulty)); persistProfile();
+        const unsigned xp[]={100,125,150,200}; addMW3XP(xp[config.difficulty]); persistProfile();
     }
 }
 void KisakSurvival_Removed(gentity_s *enemy) {

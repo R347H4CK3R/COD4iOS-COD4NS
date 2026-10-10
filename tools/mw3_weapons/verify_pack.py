@@ -1,7 +1,7 @@
 """Verify real ACR conversion roundtrip and package its external IW3 images."""
 import argparse, hashlib, json, shutil, struct, zipfile
 from pathlib import Path
-from convert_acr import info_parse
+from convert_acr import info_parse, WEAPONS
 
 
 def glb_metadata(path):
@@ -41,21 +41,28 @@ def verify(source, converted, roundtrip, package):
             checked[name].append(before)
     for name in report['animations']:
         assert (source/'xanim'/name).read_bytes()==(roundtrip/'xanim'/name).read_bytes(), name
-    fields = info_parse((roundtrip/'weapons'/'mw3_acr').read_text())
-    assert fields['gunModel']=='viewmodel_remington_acr_iw5'
-    assert fields['worldModel']=='weapon_remington_acr_iw5'
-    assert fields['reloadAnim']=='viewmodel_acr_reload'
+    weapons=report.get('weapons', [report['weapon']])
+    for target in weapons:
+        fields=info_parse((roundtrip/'weapons'/target).read_text())
+        original=info_parse((source/'weapons'/WEAPONS[target][0]).read_text())
+        for field in ('gunModel','worldModel','reloadAnim','reloadEmptyAnim','fireAnim','weaponClass','clipSize','damage'):
+            assert fields[field]==original[field], f'{target}: retained {field} differs'
     for name in report['images']:
-        assert (roundtrip/'images'/f'{name}.dds').is_file(), name
+        before=(source/'images'/f'{name}.dds').read_bytes()
+        after=(roundtrip/'images'/f'{name}.dds').read_bytes()
+        assert before[:4]==after[:4]==b'DDS ', name
+        assert before[12:20]==after[12:20] and before[84:88]==after[84:88], f'{name}: image dimensions/encoding changed'
+        assert before[128:]==after[128:], f'{name}: image mip payload changed'
         assert (converted/'raw/images'/f'{name}.iwi').read_bytes()[:4]==b'IWi\x06', name
     package.mkdir(parents=True,exist_ok=True)
     shutil.copyfile(converted/'zone_out/mod/mod.ff',package/'mod.ff')
-    with zipfile.ZipFile(package/'z_mw3_acr.iwd','w',compression=zipfile.ZIP_DEFLATED) as archive:
+    archive_name='z_mw3_primary.iwd' if len(weapons)>1 else 'z_mw3_acr.iwd'
+    with zipfile.ZipFile(package/archive_name,'w',compression=zipfile.ZIP_DEFLATED) as archive:
         for name in report['images']:
             archive.write(converted/'raw/images'/f'{name}.iwi',f'images/{name}.iwi')
     result = {'experimental':True,'models':checked,'animations_identical':len(report['animations']),
-              'external_images':len(report['images']),'limitations':report['limitations'],
-              'sha256':{name:hashlib.sha256((package/name).read_bytes()).hexdigest() for name in ('mod.ff','z_mw3_acr.iwd')}}
+              'images_payload_identical':len(report['images']),'weapons':weapons,'external_images':len(report['images']),'limitations':report['limitations'],
+              'sha256':{name:hashlib.sha256((package/name).read_bytes()).hexdigest() for name in ('mod.ff',archive_name)}}
     (package/'verification.json').write_text(json.dumps(result,indent=2))
     return result
 

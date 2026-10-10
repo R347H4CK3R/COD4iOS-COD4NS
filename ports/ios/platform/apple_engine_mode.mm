@@ -91,6 +91,45 @@ bool KisakApple_SetSurvivalConfig(unsigned map, unsigned difficulty, unsigned pl
         return true;
     }
 }
+bool KisakApple_HasSurvivalMW3XP() {
+    @autoreleasepool { return SurvivalNumber(SurvivalRecord(@"KisakSurvivalMW3XP")[@"xp"],UINT_MAX,1000000000u)!=UINT_MAX; }
+}
+unsigned KisakApple_GetSurvivalMW3XP() {
+    @autoreleasepool { return SurvivalNumber(SurvivalRecord(@"KisakSurvivalMW3XP")[@"xp"],0,1000000000u); }
+}
+void KisakApple_StoreSurvivalMW3XP(unsigned xp) {
+    @autoreleasepool { [NSUserDefaults.standardUserDefaults setObject:@{@"version":@1,@"xp":@(std::min(xp,1000000000u))} forKey:@"KisakSurvivalMW3XP"]; }
+}
+void KisakApple_GetSurvivalLoadout(unsigned *primary, unsigned *secondary, unsigned *equipment, unsigned *perk) {
+    @autoreleasepool {
+        unsigned p=0,s=0,e=0,k=0;
+        NSDictionary *record=SurvivalRecord(@"KisakSurvivalLoadout");
+        if(record) {
+            const unsigned rp=SurvivalNumber(record[@"primary"],UINT_MAX,UINT_MAX);
+            const unsigned rs=SurvivalNumber(record[@"secondary"],UINT_MAX,UINT_MAX);
+            const unsigned re=SurvivalNumber(record[@"equipment"],UINT_MAX,UINT_MAX);
+            const unsigned rk=SurvivalNumber(record[@"perk"],UINT_MAX,UINT_MAX);
+            if(rp<5 && rs<2 && re<3 && rk<3) { p=rp; s=rs; e=re; k=rk; }
+        } else if(![NSUserDefaults.standardUserDefaults objectForKey:@"KisakSurvivalLoadout"]) {
+            // Migrate only an explicitly stored old preset; a fresh profile uses
+            // the original MW3 starting pistol and Last Stand loadout.
+            NSDictionary *old=SurvivalRecord(@"KisakSurvivalConfig");
+            const unsigned c=SurvivalNumber(old[@"playerClass"],UINT_MAX,UINT_MAX);
+            if(c<3) { p=c==1?4:3; e=c==2?1:0; }
+        }
+        if(primary) *primary=p;
+        if(secondary) *secondary=s;
+        if(equipment) *equipment=e;
+        if(perk) *perk=k;
+    }
+}
+bool KisakApple_SetSurvivalLoadout(unsigned primary, unsigned secondary, unsigned equipment, unsigned perk) {
+    if(primary>=5 || secondary>=2 || equipment>=3 || perk>=3) return false;
+    @autoreleasepool {
+        [NSUserDefaults.standardUserDefaults setObject:@{@"version":@1,@"primary":@(primary),@"secondary":@(secondary),@"equipment":@(equipment),@"perk":@(perk)} forKey:@"KisakSurvivalLoadout"];
+        return true;
+    }
+}
 void KisakApple_PromptEngineRestart(const char *mode)
 {
     @autoreleasepool {

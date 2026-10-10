@@ -43,15 +43,26 @@ def convert_material(data, target_techset, iw3, iw5):
     return data
 
 
-def convert(dump, weapon, oat_source, output, techset, image_converter=None):
+WEAPONS = {
+    'mw3_acr': ('iw5_acr_mp', 'viewmodel_remington_acr_iw5', 'weapon_remington_acr_iw5', 'MW3 ACR'),
+    'mw3_usp45': ('iw5_usp45_mp', 'viewmodel_usp45_iw5', 'weapon_usp45_iw5', 'MW3 USP .45'),
+    'mw3_mp7': ('iw5_mp7_mp', 'viewmodel_mp7_iw5', 'weapon_mp7_iw5', 'MW3 MP7'),
+}
+
+def validate_weapon(fields, target):
+    if target not in WEAPONS: raise ValueError('Unsupported original weapon identity')
+    _, gun, world, _ = WEAPONS[target]
+    if fields.get('gunModel') != gun or fields.get('worldModel') != world:
+        raise ValueError('Requires actual original MW3 weapon models, not a renamed replacement')
+
+def convert(dump, weapon, oat_source, output, techset, image_converter=None, target='mw3_acr'):
     raw = output / 'raw'; raw.mkdir(parents=True, exist_ok=True)
-    report = {'experimental': True, 'weapon': 'mw3_acr', 'external_techsets': [techset],
+    report = {'experimental': True, 'weapon': target, 'external_techsets': [techset],
               'omitted_fields': [], 'models': [], 'animations': [], 'materials': [], 'images': []}
     fields_source = (oat_source/'src/ObjCommon/Game/IW3/Weapon/WeaponFields.h').read_text()
     types = dict(re.findall(r'\{"([^"]+)"[^\n]*?,\s*(\w+)\s*\}', fields_source))
     original_fields = info_parse(weapon.read_text())
-    if original_fields.get('gunModel')!='viewmodel_remington_acr_iw5' or original_fields.get('worldModel')!='weapon_remington_acr_iw5':
-        raise ValueError('Requires actual base MW3 ACR definition, not a renamed replacement gun')
+    validate_weapon(original_fields, target)
     fields = {k: v for k, v in original_fields.items() if k in types}
     iw3 = techniques((oat_source/'src/Common/Game/IW3/IW3_Assets.h').read_text())
     iw5 = techniques((oat_source/'src/Common/Game/IW5/IW5_Assets.h').read_text())
@@ -76,7 +87,7 @@ def convert(dump, weapon, oat_source, output, techset, image_converter=None):
             report['omitted_fields'].append(key); fields[key] = ''
         elif kind in ('CSPFT_SOUND', 'CSPFT_FX', 'WFT_BOUNCE_SOUND', 'WFT_NOTETRACKSOUNDMAP') and value:
             report['omitted_fields'].append(key); fields[key] = ''
-    fields['displayName'] = 'MW3 ACR (conversion prototype)'
+    fields['displayName'] = WEAPONS[target][3] + ' (conversion prototype)'
     # ACR has no usable alt attachment in this base-only pack.
     if 'altWeapon' in fields: fields['altWeapon'] = ''
     for model in sorted(models):
@@ -111,13 +122,13 @@ def convert(dump, weapon, oat_source, output, techset, image_converter=None):
             rel = Path('accuracy')/directory/name
             src = weapon.parent.parent/rel
             dst = raw/rel; dst.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(src,dst)
-    dst = raw/'weapons'/'mw3_acr'; dst.parent.mkdir(parents=True, exist_ok=True); dst.write_text(info_write(fields))
+    dst = raw/'weapons'/target; dst.parent.mkdir(parents=True, exist_ok=True); dst.write_text(info_write(fields))
     zone = output/'zone_source'/'mod.zone'; zone.parent.mkdir(parents=True, exist_ok=True)
     zone.write_text('>game,IW3\n>name,mod\n' + f'techniqueset,,{techset}\n' +
-                    ''.join(f'xanim,{a}\n' for a in sorted(animations)) + 'weapon,mw3_acr\n')
+                    ''.join(f'xanim,{a}\n' for a in sorted(animations)) + f'weapon,{target}\n')
     for key, value in [('models',models),('animations',animations),('materials',materials),('images',images)]: report[key] = sorted(value)
     report['limitations'] = ['External native IW3 techset must be verified against retail common.ff',
-                             'Sound and muzzle FX deliberately omitted; no ACR audio conversion yet',
+                             'Sound and muzzle FX deliberately omitted; original audio conversion not implemented',
                              'MW3 viewhands and animation rig require device pose validation',
                              'Specular/detail textures omitted pending channel and shader conversion',
                              'Binary roundtrip does not prove in-game rendering or gameplay']

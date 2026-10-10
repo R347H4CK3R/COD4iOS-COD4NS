@@ -29,7 +29,7 @@ final class IW5MetalSmokeView: MTKView, MTKViewDelegate {
         let shader = """
         #include <metal_stdlib>
         using namespace metal;
-        struct V { float2 pos; float3 color; };
+        struct V { float2 pos; packed_float3 color; };
         struct Out { float4 position [[position]]; float3 color; };
         vertex Out vert_main(const device V *v [[buffer(0)]], uint id [[vertex_id]]) {
             Out o; o.position=float4(v[id].pos,0,1); o.color=v[id].color; return o;

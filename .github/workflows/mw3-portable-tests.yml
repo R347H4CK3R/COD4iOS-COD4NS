@@ -18,7 +18,7 @@ jobs:
           SRC="ports/ios/core"
           TEST="ports/ios/tests"
           COMMON=("$SRC/mw3_gameplay_registry.cpp" "$SRC/mw3_gameplay_bridge.cpp" "$SRC/mw3_gameplay_effects.cpp" "$SRC/mw3_combat_adapter.cpp" "$SRC/mw3_definition_loader.cpp" "$SRC/mw3_equipment_adapter.cpp" "$SRC/mw3_survival_waves.cpp" "$SRC/mw3_dome_mesh.cpp" "$SRC/mw3_dome_ground.cpp")
-          for test in mw3_registry_tests mw3_bridge_tests mw3_effect_tests mw3_combat_adapter_tests mw3_loader_tests mw3_equipment_tests mw3_survival_tests mw3_dome_mesh_tests; do
+          for test in mw3_registry_tests mw3_bridge_tests mw3_effect_tests mw3_combat_adapter_tests mw3_loader_tests mw3_equipment_tests mw3_survival_tests mw3_dome_mesh_tests mw3_dome_ground_tests; do
             g++ -std=c++17 -O0 -g -Wall -Wextra -Werror -pthread "${COMMON[@]}" "$TEST/$test.cpp" -o "/tmp/$test"
             "/tmp/$test"
           done

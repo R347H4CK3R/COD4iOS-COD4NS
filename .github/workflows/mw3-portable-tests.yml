@@ -17,8 +17,8 @@ jobs:
           set -euo pipefail
           SRC="ports/ios/core"
           TEST="ports/ios/tests"
-          COMMON=("$SRC/mw3_gameplay_registry.cpp" "$SRC/mw3_gameplay_bridge.cpp" "$SRC/mw3_gameplay_effects.cpp" "$SRC/mw3_combat_adapter.cpp")
-          for test in mw3_registry_tests mw3_bridge_tests mw3_effect_tests mw3_combat_adapter_tests; do
+          COMMON=("$SRC/mw3_gameplay_registry.cpp" "$SRC/mw3_gameplay_bridge.cpp" "$SRC/mw3_gameplay_effects.cpp" "$SRC/mw3_combat_adapter.cpp" "$SRC/mw3_definition_loader.cpp")
+          for test in mw3_registry_tests mw3_bridge_tests mw3_effect_tests mw3_combat_adapter_tests mw3_loader_tests; do
             g++ -std=c++17 -O0 -g -Wall -Wextra -Werror -pthread "${COMMON[@]}" "$TEST/$test.cpp" -o "/tmp/$test"
             "/tmp/$test"
           done

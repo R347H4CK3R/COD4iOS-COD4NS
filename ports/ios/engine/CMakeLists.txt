@@ -227,7 +227,7 @@ set_target_properties(kisakcod_download PROPERTIES XCODE_ATTRIBUTE_CLANG_ENABLE_
     target_compile_options(kisakcod_engine_mp PRIVATE
         "SHELL:-include ${CMAKE_CURRENT_LIST_DIR}/../compat/kisak_apple_prelude.h"
         -fms-extensions -fno-strict-aliasing -fwrapv -w)
-    target_link_libraries(kisakcod_engine_mp PUBLIC OpenAL::OpenAL kisakcod_zoneload kisakcod_metal kisakcod_video kisakcod_mode)
+    target_link_libraries(kisakcod_engine_mp PUBLIC OpenAL::OpenAL kisakcod_zoneload kisakcod_metal kisakcod_video kisakcod_mode kisakcod_core)
 endif()
 
 add_library(kisakcod_engine_sp STATIC ${KISAK_ENGINE_SOURCES})

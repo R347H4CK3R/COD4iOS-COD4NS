@@ -275,7 +275,7 @@ static UIButton *button(NSString *text,id target,SEL action) {
     if(_loading) return;
     [self clearInput];
     UIDocumentPickerViewController *picker=[[UIDocumentPickerViewController alloc]
-        initForOpeningContentTypes:@[UTTypeData] asCopy:NO];
+        initForOpeningContentTypes:@[UTTypeFolder,UTTypeData] asCopy:NO];
     picker.delegate=self; picker.allowsMultipleSelection=NO;
     __weak KISMapViewController *weakSelf=self;
     [self presentViewController:picker animated:YES completion:^{[weakSelf updateRunning];}];
@@ -292,6 +292,37 @@ static UIButton *button(NSString *text,id target,SEL action) {
     [controller dismissViewControllerAnimated:YES completion:^{[self loadURL:url];}];
 }
 - (void)loadURL:(NSURL *)url {
+    NSNumber *directory=nil;
+    [url getResourceValue:&directory forKey:NSURLIsDirectoryKey error:nil];
+    if(directory.boolValue && [url.pathExtension.lowercaseString isEqualToString:@"mw3map"]) {
+        _loading=YES;_open.enabled=NO;
+        _status.text=@"Importing private MW3 map bundle…";
+        __weak KISMapViewController *weakSelf=self;
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
+            BOOL scoped=[url startAccessingSecurityScopedResource];
+            NSFileManager *fm=[NSFileManager defaultManager];
+            NSError *problem=nil;
+            NSURL *support=[fm URLForDirectory:NSApplicationSupportDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:YES error:&problem];
+            NSURL *root=[support URLByAppendingPathComponent:@"ImportedMW3" isDirectory:YES];
+            if(!problem)[fm createDirectoryAtURL:root withIntermediateDirectories:YES attributes:nil error:&problem];
+            NSURL *dest=[root URLByAppendingPathComponent:url.lastPathComponent isDirectory:YES];
+            if(!problem && [fm fileExistsAtPath:dest.path])[fm removeItemAtURL:dest error:&problem];
+            if(!problem)[fm copyItemAtURL:url toURL:dest error:&problem];
+            if(scoped)[url stopAccessingSecurityScopedResource];
+            NSString *name=[dest.lastPathComponent stringByDeletingPathExtension];
+            NSURL *mesh=[dest URLByAppendingPathComponent:[name stringByAppendingString:@"_textured.bin"]];
+            if(!problem && ![fm fileExistsAtPath:mesh.path])
+                problem=[NSError errorWithDomain:@"MW3Bundle" code:2 userInfo:@{NSLocalizedDescriptionKey:@"Bundle is missing its textured mesh."}];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                KISMapViewController *controller=weakSelf;
+                if(!controller)return;
+                controller->_loading=NO;controller->_open.enabled=YES;
+                if(problem){[controller showError:problem.localizedDescription];return;}
+                [controller loadURL:mesh];
+            });
+        });
+        return;
+    }
     if([url.lastPathComponent hasSuffix:@"_textured.bin"]) {
         BOOL scoped=[url startAccessingSecurityScopedResource];
         NSError *metalError=nil;

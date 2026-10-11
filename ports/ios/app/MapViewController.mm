@@ -1,4 +1,6 @@
 #import <UIKit/UIKit.h>
+#include "../core/mw3_dome_mesh.h"
+#include "../core/mw3_dome_preview.h"
 #import <GameController/GameController.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "MetalRenderer.h"
@@ -298,7 +300,17 @@ static UIButton *button(NSString *text,id target,SEL action) {
         NSError *coordinationError=nil;
         NSFileCoordinator *coordinator=[[NSFileCoordinator alloc] initWithFilePresenter:nil];
         [coordinator coordinateReadingItemAtURL:url options:0 error:&coordinationError byAccessor:^(NSURL *localURL) {
-            try { mesh=std::make_shared<assets::BspMesh>(assets::loadMap(std::string(localURL.fileSystemRepresentation))); }
+            try {
+                if([localURL.pathExtension.lowercaseString isEqualToString:@"bin"] &&
+                   [localURL.lastPathComponent isEqualToString:@"mp_dome_triangles.bin"]) {
+                    mw3::DomeMesh dome;
+                    if(!dome.load(std::string(localURL.fileSystemRepresentation)))
+                        throw std::runtime_error(dome.error());
+                    mesh=std::make_shared<assets::BspMesh>(mw3::makeDomePreviewMesh(dome));
+                } else {
+                    mesh=std::make_shared<assets::BspMesh>(assets::loadMap(std::string(localURL.fileSystemRepresentation)));
+                }
+            }
             catch(const std::exception& error) {failure=[NSString stringWithUTF8String:error.what()];}
             catch(...) {failure=@"Errore inatteso nel caricamento della mappa.";}
         }];

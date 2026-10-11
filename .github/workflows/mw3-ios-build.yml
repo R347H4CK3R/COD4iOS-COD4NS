@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'ports/ios/app/launcher.mm'
+      - 'ports/ios/app/main.mm'
       - 'ports/ios/app/engine_app.mm'
       - 'ports/ios/app/MapViewController.mm'
       - 'ports/ios/app/MetalRenderer.*'

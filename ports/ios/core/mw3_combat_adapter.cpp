@@ -63,3 +63,5 @@ extern "C" int mw3_optional_reload_ms(MW3Mode mode,const char* weapon,int origin
  gameplay_event("reload_ms",weapon,original,result);
  return result;
 }
+
+extern "C" void mw3_ensure_config_loaded(void) { ensure_ios_definitions_loaded(); }

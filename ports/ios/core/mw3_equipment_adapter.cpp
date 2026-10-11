@@ -1,4 +1,5 @@
 #include "mw3_equipment_adapter.h"
+#include "mw3_combat_adapter.h"
 #include <cerrno>
 #include <cstdlib>
 #include <cmath>
@@ -7,6 +8,7 @@
 #include <cstring>
 namespace {
 bool integer(MW3Mode mode,MW3Category type,const char* id,const char* prop,int& out) {
+ mw3_ensure_config_loaded();
  if(!id||!*id) return false;
  char str[64]{};
  if(!mw3_resolve_string(mode,type,id,prop,str,sizeof str)) return false;
@@ -25,6 +27,7 @@ extern "C" int mw3_optional_killstreak_threshold(MW3Mode m,const char* id,int ba
  int n=0;return integer(m,MW3_KILLSTREAK,id,"score_requirement",n)&&n>0?std::min(n,1000000):base;
 }
 extern "C" float mw3_optional_perk_multiplier(MW3Mode m,const char* id,const char* prop,float base) {
+ mw3_ensure_config_loaded();
  if(!id||!prop||!std::isfinite(base))return base;
  if(std::strcmp(prop,"reload_multiplier")&&std::strcmp(prop,"damage_multiplier"))return base;
  char str[64]{};

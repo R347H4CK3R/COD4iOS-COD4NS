@@ -3,7 +3,8 @@
 #include <cstdlib>
 #include <cmath>
 #include <climits>
-#include <algorithm>\n#include <cstring>
+#include <algorithm>
+#include <cstring>
 namespace {
 bool integer(MW3Mode mode,MW3Category type,const char* id,const char* prop,int& out) {
  if(!id||!*id) return false;

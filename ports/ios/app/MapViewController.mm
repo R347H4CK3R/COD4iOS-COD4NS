@@ -292,6 +292,19 @@ static UIButton *button(NSString *text,id target,SEL action) {
     [controller dismissViewControllerAnimated:YES completion:^{[self loadURL:url];}];
 }
 - (void)loadURL:(NSURL *)url {
+    if([url.lastPathComponent hasSuffix:@"_textured.bin"]) {
+        BOOL scoped=[url startAccessingSecurityScopedResource];
+        NSError *metalError=nil;
+        BOOL success=[_renderer loadMW3TexturedMesh:url error:&metalError];
+        if(scoped)[url stopAccessingSecurityScopedResource];
+        _loading=NO;_open.enabled=YES;
+        if(!success){[self showError:metalError.localizedDescription?:@"Invalid textured MW3 file"];return;}
+        _hasMap=YES;_renderFailed=NO;_welcome.hidden=YES;_touchView.hidden=NO;
+        _reset.hidden=NO;_up.hidden=NO;_down.hidden=NO;
+        _mapName.text=url.lastPathComponent;
+        _status.text=@"MW3 texture preview · free flight · no physics/multiplayer";
+        [self updateRunning];return;
+    }
     // Security-scoped access and coordination let File Provider/iCloud materialize
     // the selected document. Parsing and IO stay off the render/UI thread.
     __weak KISMapViewController *weakSelf=self;

@@ -1,0 +1,86 @@
+[
+  {
+    "id": "assault_rifle_base",
+    "category": "weapon",
+    "source": "cod4",
+    "sections": [
+      "multiplayer",
+      "special_ops"
+    ],
+    "properties": {
+      "damage": 30,
+      "magazine": 30
+    }
+  },
+  {
+    "id": "assault_rifle_base",
+    "category": "weapon",
+    "source": "mw3",
+    "sections": [
+      "multiplayer",
+      "special_ops"
+    ],
+    "properties": {
+      "damage": 32,
+      "magazine": 30
+    }
+  },
+  {
+    "id": "frag",
+    "category": "lethal",
+    "source": "mw3",
+    "sections": [
+      "multiplayer",
+      "special_ops"
+    ],
+    "properties": {
+      "fuse_seconds": 3.5
+    }
+  },
+  {
+    "id": "flash",
+    "category": "tactical",
+    "source": "mw3",
+    "sections": [
+      "multiplayer",
+      "special_ops"
+    ],
+    "properties": {
+      "effect": "flash"
+    }
+  },
+  {
+    "id": "quick_reload",
+    "category": "perk",
+    "source": "mw3",
+    "sections": [
+      "multiplayer"
+    ],
+    "properties": {
+      "reload_multiplier": 0.8
+    }
+  },
+  {
+    "id": "uav",
+    "category": "killstreak",
+    "source": "mw3",
+    "sections": [
+      "multiplayer"
+    ],
+    "properties": {
+      "score_requirement": 300
+    }
+  },
+  {
+    "id": "red_dot",
+    "category": "attachment",
+    "source": "mw3",
+    "sections": [
+      "multiplayer",
+      "special_ops"
+    ],
+    "properties": {
+      "optic": "reflex"
+    }
+  }
+]

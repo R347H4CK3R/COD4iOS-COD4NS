@@ -28,7 +28,7 @@ extern "C" int mw3_load_definitions_tsv(const char* path) {
   int mode=0,category=0,source=0;
   if(!integer(fields[0],mode)||mode<1||mode>3||!integer(fields[1],category)||category>5||!integer(fields[2],source)||source>1) return -1;
   if(fields[3].empty()||fields[4].empty()||fields[3].size()>128||fields[4].size()>64||fields[5].size()>512) return -1;
-  if(!mw3_register_definition(fields[3].c_str(),static_cast<MW3Category>(category),static_cast<MW3Source>(source),static_cast<unsigned>(mode),fields[4].c_str(),fields[5].c_str())) return -1;
+  if(!mw3_register_property(fields[3].c_str(),static_cast<MW3Category>(category),static_cast<MW3Source>(source),static_cast<unsigned>(mode),fields[4].c_str(),fields[5].c_str())) return -1;
   ++count;
  }
  return count;

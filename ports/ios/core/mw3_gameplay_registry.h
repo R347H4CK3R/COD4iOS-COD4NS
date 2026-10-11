@@ -16,6 +16,7 @@ struct Definition {
 class GameplayRegistry {
 public:
  void add(Definition definition);
+ void addProperty(Definition definition);
  const Definition* find(Section section, Category category, const std::string& id, Source preferred=Source::MW3) const;
  std::size_t count(Section section, Category category) const;
 private:

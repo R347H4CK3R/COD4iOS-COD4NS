@@ -11,6 +11,20 @@ void GameplayRegistry::add(Definition definition) {
  }
  entries_.push_back(std::move(definition));
 }
+void GameplayRegistry::addProperty(Definition definition) {
+ if(definition.id.empty() || definition.sections.empty() || definition.properties.size()!=1)
+  throw std::invalid_argument("invalid gameplay property");
+ for(auto& entry:entries_) {
+  if(entry.id==definition.id && entry.category==definition.category && entry.source==definition.source) {
+   if(entry.sections!=definition.sections) throw std::invalid_argument("incompatible section mask");
+   const auto& property=*definition.properties.begin();
+   if(entry.properties.count(property.first)) throw std::invalid_argument("duplicate gameplay property");
+   entry.properties.insert(property);
+   return;
+  }
+ }
+ add(std::move(definition));
+}
 const Definition* GameplayRegistry::find(Section section, Category category, const std::string& id, Source preferred) const {
  const Definition* candidate=nullptr;
  for(const auto& entry:entries_) {

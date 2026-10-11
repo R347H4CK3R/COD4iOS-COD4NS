@@ -13,35 +13,92 @@
 #import <Foundation/Foundation.h>
 #include <dlfcn.h>
 #include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
 
 extern "C" NSString *const KisakEngineModeKey = @"KisakEngineMode";
+
+// Diagnostic files stay in the user-accessible app Documents directory.
+// Crash events are best-effort and do not replace Apple's system crash reports.
+static int kisakDiagnosticFD = -1;
+static NSString *kisakMarkerPath = nil;
+static void KisakDiagnosticEvent(NSString *event) {
+    if (kisakDiagnosticFD < 0) return;
+    NSString *line = [NSString stringWithFormat:@"%@ %@\n", [NSDate date], event];
+    NSData *bytes = [line dataUsingEncoding:NSUTF8StringEncoding];
+    if (bytes) (void)write(kisakDiagnosticFD, bytes.bytes, bytes.length);
+}
+static void KisakUncaughtException(NSException *exception) {
+    KisakDiagnosticEvent([NSString stringWithFormat:@"UNCAUGHT_EXCEPTION %@ %@ stack=%@",
+        exception.name, exception.reason, exception.callStackSymbols]);
+}
+static void KisakFatalSignal(int signum) {
+    const char *message = "FATAL_SIGNAL: check iOS system crash report for stack trace\n";
+    if (kisakDiagnosticFD >= 0) (void)write(kisakDiagnosticFD, message, strlen(message));
+    signal(signum, SIG_DFL);
+    raise(signum);
+}
+static void KisakStartDiagnostics(NSString *mode) {
+    NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    if (!docs) return;
+    kisakMarkerPath = [docs stringByAppendingPathComponent:@"cod4ios_session_active.marker"];
+    NSString *log = [docs stringByAppendingPathComponent:@"cod4ios_diagnostics.log"];
+    kisakDiagnosticFD = open(log.fileSystemRepresentation, O_WRONLY|O_CREAT|O_APPEND, 0600);
+    if ([[NSFileManager defaultManager] fileExistsAtPath:kisakMarkerPath])
+        KisakDiagnosticEvent(@"PREVIOUS_SESSION_UNCLEAN (possible crash, force quit or termination)");
+    [@"active" writeToFile:kisakMarkerPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    KisakDiagnosticEvent([NSString stringWithFormat:@"SESSION_START mode=%@ app=%@",mode,
+        NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"] ?: @"unknown"]);
+    NSSetUncaughtExceptionHandler(&KisakUncaughtException);
+    signal(SIGABRT, KisakFatalSignal);
+    signal(SIGSEGV, KisakFatalSignal);
+    signal(SIGBUS, KisakFatalSignal);
+}
+static void KisakStopDiagnostics(int result) {
+    KisakDiagnosticEvent([NSString stringWithFormat:@"ENGINE_EXIT code=%d",result]);
+    if (kisakMarkerPath)
+        [[NSFileManager defaultManager] removeItemAtPath:kisakMarkerPath error:nil];
+    if (kisakDiagnosticFD >= 0) { close(kisakDiagnosticFD); kisakDiagnosticFD=-1; }
+}
+
 
 int main(int argc, char *argv[])
 {
     @autoreleasepool {
         NSString *mode = [NSUserDefaults.standardUserDefaults stringForKey:KisakEngineModeKey];
         const BOOL multiplayer = ![mode isEqualToString:@"sp"];
+        KisakStartDiagnostics(multiplayer ? @"multiplayer" : @"single_player");
         NSString *name = multiplayer ? @"libkisakcod_mp.dylib" : @"libkisakcod_sp.dylib";
         NSString *path = [NSBundle.mainBundle.privateFrameworksPath stringByAppendingPathComponent:name];
 
         void *image = dlopen(path.fileSystemRepresentation, RTLD_NOW | RTLD_LOCAL);
         if (!image) {
-            fprintf(stderr, "KisakCOD: cannot load %s: %s\n", name.UTF8String, dlerror());
+            KisakDiagnosticEvent([NSString stringWithFormat:@"ENGINE_DLOPEN_FAILED name=%@ error=%s",name,dlerror() ?: "unknown"]);
+            fprintf(stderr, "KisakCOD: cannot load %s\n", name.UTF8String);
             // Fall back to the other engine rather than leaving the player with a dead icon.
             name = multiplayer ? @"libkisakcod_sp.dylib" : @"libkisakcod_mp.dylib";
             path = [NSBundle.mainBundle.privateFrameworksPath stringByAppendingPathComponent:name];
             image = dlopen(path.fileSystemRepresentation, RTLD_NOW | RTLD_LOCAL);
             if (!image) {
                 fprintf(stderr, "KisakCOD: no engine to load: %s\n", dlerror());
+                KisakDiagnosticEvent(@"BOTH_ENGINE_LIBRARIES_FAILED");
+                KisakStopDiagnostics(1);
                 return 1;
             }
         }
         int (*entry)(int, char **) = (int (*)(int, char **))dlsym(image, "KisakEngine_AppMain");
         if (!entry) {
             fprintf(stderr, "KisakCOD: %s has no entry point: %s\n", name.UTF8String, dlerror());
+            KisakDiagnosticEvent(@"ENGINE_ENTRY_MISSING");
+            KisakStopDiagnostics(1);
             return 1;
         }
         fprintf(stderr, "KisakCOD: running %s\n", name.UTF8String);
-        return entry(argc, argv);
+        KisakDiagnosticEvent([NSString stringWithFormat:@"ENGINE_BEGIN name=%@",name]);
+        int result = entry(argc, argv);
+        KisakStopDiagnostics(result);
+        return result;
     }
 }

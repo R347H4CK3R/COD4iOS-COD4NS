@@ -1,4 +1,7 @@
 #include <universal/q_shared.h>
+#if defined(__APPLE__) && defined(KISAK_MP)
+#include "../../ports/ios/core/mw3_combat_adapter.h"
+#endif
 #include "bg_public.h"
 #include "bg_local.h"
 #include <database/database.h>
@@ -1888,6 +1891,12 @@ void __cdecl PM_SetReloadingState(playerState_s *ps)
         ps->weaponTime = weapDef->iReloadEmptyTime;
         PM_AddEvent(ps, EV_RELOAD_FROM_EMPTY);
     }
+#if defined(__APPLE__) && defined(KISAK_MP)
+    // Optional override of player reload timing; original duration retained when absent.
+    // Do not mutate shared WeaponDef fields or globally modify weapon definitions.
+    if (weapDef && weapDef->szInternalName)
+        ps->weaponTime = mw3_optional_reload_ms(MW3_MODE_MULTIPLAYER, weapDef->szInternalName, ps->weaponTime);
+#endif
     if (ps->weaponstate == WEAPON_RELOAD_START_INTERUPT)
         ps->weaponstate = WEAPON_RELOADING_INTERUPT;
     else

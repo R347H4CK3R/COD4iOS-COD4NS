@@ -8,9 +8,6 @@
 #include <algorithm>
 #include <cerrno>
 #include <climits>
-#include <cstdlib>
-#include <cstdio>
-#include <ctime>
 #include <cmath>
 namespace {
 void ensure_ios_definitions_loaded() {
@@ -58,6 +55,7 @@ extern "C" int mw3_optional_weapon_damage(MW3Mode mode,const char* weapon,int or
  return result;
 }
 extern "C" int mw3_optional_reload_ms(MW3Mode mode,const char* weapon,int original) {
+ ensure_ios_definitions_loaded();
  if(!weapon||!*weapon||original<0) return original;
  int replacement=0;
  if(!read_integer(mode,MW3_WEAPON,weapon,"reload_ms",replacement)||replacement<0) return original;

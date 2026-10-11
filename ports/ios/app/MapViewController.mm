@@ -8,6 +8,7 @@
 #include "FastfileWorld.hpp"
 #include <memory>
 #include <cmath>
+#include <cstdio>
 #include <exception>
 
 using namespace kisakcod;
@@ -329,6 +330,13 @@ static UIButton *button(NSString *text,id target,SEL action) {
                                 finite=finite && std::isfinite(spawn.position[k]);
                             }
                             if(!finite) continue;
+                            NSString *angles=entry[@"angles"];
+                            if([angles isKindOfClass:[NSString class]]) {
+                                float pitch=0,yaw=0,roll=0;
+                                if(sscanf(angles.UTF8String,"%f %f %f",&pitch,&yaw,&roll)==3 &&
+                                   std::isfinite(pitch) && std::isfinite(yaw) && std::isfinite(roll))
+                                    spawn.angles={pitch,yaw,roll};
+                            }
                             mesh->spawn=spawn;
                             break;
                         }

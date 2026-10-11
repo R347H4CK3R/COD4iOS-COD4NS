@@ -4,6 +4,8 @@ on:
     paths:
       - 'ports/ios/core/mw3_*'
       - 'ports/ios/tests/mw3_*'
+      - 'ports/ios/core/CMakeLists.txt'
+      - 'ports/ios/app/MapViewController.mm'
       - '.github/workflows/mw3-portable-tests.yml'
   workflow_dispatch:
 jobs:

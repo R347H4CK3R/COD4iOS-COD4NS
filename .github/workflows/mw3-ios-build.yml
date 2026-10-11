@@ -5,6 +5,12 @@ on:
     paths:
       - 'ports/ios/app/launcher.mm'
       - 'ports/ios/app/engine_app.mm'
+      - 'ports/ios/app/MapViewController.mm'
+      - 'ports/ios/app/MetalRenderer.*'
+      - 'ports/ios/core/CMakeLists.txt'
+      - 'ports/ios/assets/**'
+      - 'tools/build_private_dome_mesh.py'
+      - 'tools/validate_private_dome_stage.py'
       - 'ports/ios/core/mw3_*'
       - 'src/bgame/bg_weapons.cpp'
       - 'src/game_mp/g_combat_mp.cpp'

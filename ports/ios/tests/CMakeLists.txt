@@ -8,3 +8,7 @@ add_test(NAME kisakcod_core_tests COMMAND kisakcod_core_tests)
 add_executable(kisakcod_pool_tests pool_tests.cpp)
 target_link_libraries(kisakcod_pool_tests PRIVATE kisakcod_core)
 add_test(NAME kisakcod_pool_tests COMMAND kisakcod_pool_tests)
+
+add_executable(mw3_registry_tests mw3_registry_tests.cpp)
+target_link_libraries(mw3_registry_tests PRIVATE kisakcod_core)
+add_test(NAME mw3_registry_tests COMMAND mw3_registry_tests)

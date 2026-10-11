@@ -39,6 +39,7 @@ add_library(kisakcod_core STATIC
     mw3_combat_adapter.cpp
     mw3_definition_loader.cpp
     mw3_equipment_adapter.cpp
+    mw3_survival_waves.cpp
 )
 target_compile_features(kisakcod_core PUBLIC cxx_std_17)
 # src/ and deps/ are public so the app can call the reused engine modules

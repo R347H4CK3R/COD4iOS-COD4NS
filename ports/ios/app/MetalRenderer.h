@@ -7,6 +7,7 @@
 @property(nonatomic, copy) void (^renderFailure)(NSString *message);
 - (instancetype)initWithView:(MTKView *)view error:(NSError **)error;
 - (BOOL)loadMesh:(const kisakcod::assets::BspMesh &)mesh error:(NSError **)error;
+- (void)setDomePreviewBoundariesEnabled:(BOOL)enabled;
 - (void)resetCamera;
 - (void)resetClock;
 @end

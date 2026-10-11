@@ -362,6 +362,8 @@ static UIButton *button(NSString *text,id target,SEL action) {
                 controller->_status.text=controller->_hasMap?@"Mappa precedente mantenuta":@"File non caricato · Scegli una mappa PC .ff o IBSP 22";
                 [controller showError:failure]; return;
             }
+            [controller->_renderer setDomePreviewBoundariesEnabled:
+                [url.lastPathComponent isEqualToString:@"mp_dome_triangles.bin"]];
             controller->_hasMap=YES; controller->_renderFailed=NO;
             controller->_welcome.hidden=YES; controller->_touchView.hidden=NO;
             controller->_reset.hidden=NO; controller->_up.hidden=NO; controller->_down.hidden=NO;

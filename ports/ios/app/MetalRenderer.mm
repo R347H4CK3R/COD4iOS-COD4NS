@@ -41,6 +41,9 @@ fragment float4 map_fragment(Out in [[stage_in]]) {
     id<MTLBuffer> _vertices, _indices;
     NSUInteger _indexCount;
     ios::Camera _camera, _initialCamera;
+    BOOL _boundedPreview;
+    ios::Vec3 _worldMin{}, _worldMax{};
+
     CFTimeInterval _lastFrame;
     dispatch_semaphore_t _inflight;
 }
@@ -89,6 +92,8 @@ fragment float4 map_fragment(Out in [[stage_in]]) {
     // Commit the new map only after both allocations succeed.
     _vertices=vertices; _indices=indices; _indexCount=mesh.indices.size();
     _camera.frameBounds(mesh.minBounds,mesh.maxBounds);
+    _worldMin=mesh.minBounds; _worldMax=mesh.maxBounds; _boundedPreview=NO;
+
     if(mesh.spawn) {
         _camera.position=mesh.spawn->position;
         _camera.position[2]+=60; // Approximate standing view height for inspection.
@@ -102,6 +107,7 @@ fragment float4 map_fragment(Out in [[stage_in]]) {
     [self resetClock];
     return YES;
 }
+- (void)setDomePreviewBoundariesEnabled:(BOOL)enabled { _boundedPreview=enabled; }
 - (void)resetCamera { _camera=_initialCamera; [self resetClock]; }
 - (void)resetClock { _lastFrame=0; }
 - (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size {
@@ -119,6 +125,10 @@ fragment float4 map_fragment(Out in [[stage_in]]) {
     _lastFrame=now;
     ios::CameraInput input=self.readInput?self.readInput():ios::CameraInput{};
     _camera.update(input,elapsed);
+    // Preview-only map extents safeguard, not polygonal wall/floor collision.
+    if(_boundedPreview) for(int k=0;k<3;k++)
+        _camera.position[k]=std::clamp(_camera.position[k],_worldMin[k],_worldMax[k]);
+
     id<MTLRenderCommandEncoder> encoder=[command renderCommandEncoderWithDescriptor:pass];
     if(!encoder) {dispatch_semaphore_signal(_inflight);return;}
     if(_indexCount) {

@@ -7,6 +7,7 @@
 #include "kisak_core.h"
 #include "FastfileWorld.hpp"
 #include <memory>
+#include <cmath>
 #include <exception>
 
 using namespace kisakcod;

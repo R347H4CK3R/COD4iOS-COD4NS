@@ -18,8 +18,10 @@ for i,material in enumerate(mesh['materials']):
  if source:
   try:
    filename=f'textures/{i:04d}.png'; dest=a.output_dir/filename;dest.parent.mkdir(parents=True,exist_ok=True)
-   if not dest.exists():
-    with Image.open(source) as img:img.convert('RGBA').save(dest,optimize=True)
+   with Image.open(source) as img:
+    rgba=img.convert('RGBA')
+    rgba.thumbnail((512,512),Image.Resampling.LANCZOS)
+    rgba.save(dest,optimize=True)
    done+=1
   except Exception:failed+=1;filename=None
  else:missing+=1

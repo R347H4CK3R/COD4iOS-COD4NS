@@ -204,7 +204,7 @@ fragment float4 tex_fragment(TexOut in [[stage_in]],
         return cached;
     }
     // Evict a single least-recently-used item instead of discarding all textures.
-    if(_textureRecency.count>=48) {
+    if(_textureRecency.count>=256) {
         NSNumber *oldest=_textureRecency.firstObject;
         [_textureCache removeObjectForKey:oldest];
         [_textureRecency removeObjectAtIndex:0];

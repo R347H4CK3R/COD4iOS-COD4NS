@@ -14,6 +14,12 @@
     return YES;
 }
 @end
+#if defined(KISAK_PREVIEW_EMBEDDED)
+extern "C" int KisakPreview_Main(int argc,char *argv[]) {
+    @autoreleasepool { return UIApplicationMain(argc,argv,nil,NSStringFromClass(KISAppDelegate.class)); }
+}
+#else
 int main(int argc,char *argv[]) {
     @autoreleasepool { return UIApplicationMain(argc,argv,nil,NSStringFromClass(KISAppDelegate.class)); }
 }
+#endif

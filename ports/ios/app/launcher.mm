@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include <string.h>
 
+extern "C" int KisakPreview_Main(int argc, char *argv[]);
 extern "C" NSString *const KisakEngineModeKey = @"KisakEngineMode";
 
 // Diagnostic files stay in the user-accessible app Documents directory.
@@ -68,6 +69,32 @@ int main(int argc, char *argv[])
 {
     @autoreleasepool {
         NSString *mode = [NSUserDefaults.standardUserDefaults stringForKey:KisakEngineModeKey];
+        // First launch with a copied MW3 bundle: open the viewer instead of COD4 MP.
+        // An explicitly saved mode always wins.
+        if(!mode.length) {
+            NSFileManager *fm=[NSFileManager defaultManager];
+            for(NSNumber *location in @[@(NSApplicationSupportDirectory),@(NSDocumentDirectory)]) {
+                NSURL *base=[fm URLForDirectory:(NSSearchPathDirectory)location.unsignedIntegerValue
+                                      inDomain:NSUserDomainMask appropriateForURL:nil create:YES error:nil];
+                for(NSURL *folder in @[base,[base URLByAppendingPathComponent:@"ImportedMW3" isDirectory:YES]]) {
+                    NSArray<NSURL *> *entries=[fm contentsOfDirectoryAtURL:folder includingPropertiesForKeys:nil options:0 error:nil];
+                    for(NSURL *entry in entries) {
+                        if([entry.pathExtension.lowercaseString isEqualToString:@"mw3map"]) {
+                            mode=@"mw3_preview";break;
+                        }
+                    }
+                    if(mode.length)break;
+                }
+                if(mode.length)break;
+            }
+        }
+        if ([mode isEqualToString:@"mw3_preview"]) {
+            KisakStartDiagnostics(@"mw3_preview");
+            KisakDiagnosticEvent(@"MW3_PREVIEW_BEGIN");
+            int result=KisakPreview_Main(argc,argv);
+            KisakStopDiagnostics(result);
+            return result;
+        }
         const BOOL multiplayer = ![mode isEqualToString:@"sp"];
         KisakStartDiagnostics(multiplayer ? @"multiplayer" : @"single_player");
         NSString *name = multiplayer ? @"libkisakcod_mp.dylib" : @"libkisakcod_sp.dylib";

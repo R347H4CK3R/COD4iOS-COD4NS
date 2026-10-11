@@ -139,9 +139,10 @@ static UIButton *button(NSString *text,id target,SEL action) {
     _mapName=label(@"KISAKCOD",18,UIFontWeightBold);
     _open=button(@"Apri mappa",self,@selector(openMap));
     _reset=button(@"Reimposta vista",self,@selector(resetCamera)); _reset.hidden=YES;
+    UIButton *multiplayerButton=button(@"COD4 Multiplayer",self,@selector(chooseMultiplayer));
     UIView *spacer=[UIView new];
     [_mapName setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
-    _header=[[UIStackView alloc] initWithArrangedSubviews:@[_mapName,spacer,_reset,_open]];
+    _header=[[UIStackView alloc] initWithArrangedSubviews:@[_mapName,spacer,multiplayerButton,_reset,_open]];
     _header.axis=UILayoutConstraintAxisHorizontal; _header.alignment=UIStackViewAlignmentCenter; _header.spacing=12;
     _header.translatesAutoresizingMaskIntoConstraints=NO; [self.view addSubview:_header];
 
@@ -284,6 +285,14 @@ static UIButton *button(NSString *text,id target,SEL action) {
 }
 - (void)didResignActive {_active=NO;[self updateRunning];}
 - (void)didBecomeActive {_active=YES;[self updateRunning];}
+- (void)chooseMultiplayer {
+    [NSUserDefaults.standardUserDefaults setObject:@"mp" forKey:@"KisakEngineMode"];
+    UIAlertController *notice=[UIAlertController alertControllerWithTitle:@"COD4 Multiplayer selected"
+       message:@"Close COD4iOS completely and reopen it to enter multiplayer. To return to the MW3 viewer, select MW3 preview mode in a future launcher build."
+       preferredStyle:UIAlertControllerStyleAlert];
+    [notice addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+    [self presentViewController:notice animated:YES completion:nil];
+}
 - (void)resetCamera {[self clearInput];[_renderer resetCamera];}
 - (ios::CameraInput)readInput {
     ios::CameraInput input=[_touchView consumeInput];

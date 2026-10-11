@@ -113,7 +113,12 @@ if(KISAK_BUILD_ENGINE AND KISAK_BUILD_MP AND KISAK_BUILD_COMBINED)
     target_link_libraries(kisakcod_sp_engine PRIVATE kisakcod_engine_sp)
     target_link_libraries(kisakcod_mp_engine PRIVATE kisakcod_engine_mp)
 
-    add_executable(KisakCOD-Combined MACOSX_BUNDLE app/launcher.mm)
+    add_executable(KisakCOD-Combined MACOSX_BUNDLE
+        app/launcher.mm app/main.mm app/MapViewController.mm app/MetalRenderer.mm)
+    target_compile_definitions(KisakCOD-Combined PRIVATE KISAK_PREVIEW_EMBEDDED)
+    target_link_libraries(KisakCOD-Combined PRIVATE kisakcod_core kisakcod_assets objc
+        "-framework Metal" "-framework MetalKit" "-framework GameController"
+        "-framework UniformTypeIdentifiers" "-framework QuartzCore" "-framework CoreGraphics")
     target_sources(KisakCOD-Combined PRIVATE app/Assets.xcassets)
     set_source_files_properties(app/Assets.xcassets PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     target_compile_features(KisakCOD-Combined PRIVATE cxx_std_20)

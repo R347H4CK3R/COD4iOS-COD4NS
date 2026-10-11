@@ -57,6 +57,7 @@ fragment float4 tex_fragment(TexOut in [[stage_in]],
     id<MTLTexture> _fallback;
     NSMutableArray *_texturePaths;
     NSMutableDictionary *_textureCache;
+    NSMutableArray<NSNumber *> *_textureRecency;
     std::vector<std::pair<NSUInteger,NSUInteger>> _materialRanges;
     BOOL _textured;
     id<MTLDepthStencilState> _depth;
@@ -103,6 +104,7 @@ fragment float4 tex_fragment(TexOut in [[stage_in]],
     _fallback=[_device newTextureWithDescriptor:fb];
     const uint8_t pixel[4]={180,180,180,255};[_fallback replaceRegion:MTLRegionMake2D(0,0,1,1) mipmapLevel:0 withBytes:pixel bytesPerRow:4];
     _textureCache=[NSMutableDictionary new];
+    _textureRecency=[NSMutableArray new];
     MTLDepthStencilDescriptor *depth=[MTLDepthStencilDescriptor new];
     depth.depthCompareFunction=MTLCompareFunctionLess;
     depth.depthWriteEnabled=YES;
@@ -157,7 +159,7 @@ fragment float4 tex_fragment(TexOut in [[stage_in]],
     }
     struct TV {float x,y,z,u,v;};
     std::vector<TV> verts;verts.reserve(size_t(triangleCount)*3);
-    std::vector<std::vector<uint32_t>> byMaterial{size_t(materialCount)};
+    auto byMaterial=std::vector<std::vector<uint32_t>>(static_cast<size_t>(materialCount));
     kisakcod::ios::Vec3 low{INFINITY,INFINITY,INFINITY},high{-INFINITY,-INFINITY,-INFINITY};
     for(uint64_t t=0;t<triangleCount;t++) {
       TV a[3];uint32_t m;
@@ -188,23 +190,35 @@ fragment float4 tex_fragment(TexOut in [[stage_in]],
       if(![relative isKindOfClass:[NSString class]])relative=@"";
       [_texturePaths addObject:relative.length?[[url URLByDeletingLastPathComponent] URLByAppendingPathComponent:relative].path:[NSNull null]];
     }
-    [_textureCache removeAllObjects];
+    [_textureCache removeAllObjects];[_textureRecency removeAllObjects];
     _vertices=vb;_indices=ib;_indexCount=sorted.size();_materialRanges=std::move(ranges);_textured=YES;
     _camera.frameBounds(low,high);_worldMin=low;_worldMax=high;_initialCamera=_camera;[self resetClock];
     return YES;
 }
 - (id<MTLTexture>)textureForMaterial:(NSUInteger)index {
-    NSNumber *key=@(index);id<MTLTexture> cached=_textureCache[key];if(cached)return cached;
-    // LRU-bounded decoded texture cache; maps with thousands of textures won't retain all GPU images.
-    if(_textureCache.count>=48)[_textureCache removeAllObjects];
+    NSNumber *key=@(index);
+    id<MTLTexture> cached=_textureCache[key];
+    if(cached) {
+        [_textureRecency removeObject:key];
+        [_textureRecency addObject:key];
+        return cached;
+    }
+    // Evict a single least-recently-used item instead of discarding all textures.
+    if(_textureRecency.count>=48) {
+        NSNumber *oldest=_textureRecency.firstObject;
+        [_textureCache removeObjectForKey:oldest];
+        [_textureRecency removeObjectAtIndex:0];
+    }
     id<MTLTexture> tex=_fallback;
     if(index<_texturePaths.count && _texturePaths[index]!=[NSNull null]) {
-      NSURL *source=[NSURL fileURLWithPath:_texturePaths[index]];
-      MTKTextureLoader *loader=[[MTKTextureLoader alloc] initWithDevice:_device];
-      id<MTLTexture> loaded=[loader newTextureWithContentsOfURL:source options:@{MTKTextureLoaderOptionSRGB:@YES} error:nil];
-      if(loaded)tex=loaded;
+        NSURL *source=[NSURL fileURLWithPath:_texturePaths[index]];
+        MTKTextureLoader *loader=[[MTKTextureLoader alloc] initWithDevice:_device];
+        id<MTLTexture> loaded=[loader newTextureWithContentsOfURL:source
+            options:@{MTKTextureLoaderOptionSRGB:@YES} error:nil];
+        if(loaded)tex=loaded;
     }
     _textureCache[key]=tex;
+    [_textureRecency addObject:key];
     return tex;
 }
 - (void)setDomePreviewBoundariesEnabled:(BOOL)enabled { _boundedPreview=enabled; }

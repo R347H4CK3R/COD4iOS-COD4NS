@@ -314,6 +314,22 @@ static void *KISEngineThreadMain(void *argument)
     _status.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
     _status.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:_status];
+#ifdef KISAK_MP
+    UIButton *mw3Button=[UIButton buttonWithType:UIButtonTypeSystem];
+    [mw3Button setTitle:@"MW3 Dome Preview" forState:UIControlStateNormal];
+    mw3Button.titleLabel.font=[UIFont boldSystemFontOfSize:11];
+    mw3Button.backgroundColor=[[UIColor blackColor] colorWithAlphaComponent:0.7];
+    mw3Button.tintColor=UIColor.whiteColor;
+    mw3Button.translatesAutoresizingMaskIntoConstraints=NO;
+    [mw3Button addTarget:self action:@selector(selectMW3Preview) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:mw3Button];
+    [NSLayoutConstraint activateConstraints:@[
+        [mw3Button.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:4],
+        [mw3Button.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-4],
+        [mw3Button.widthAnchor constraintEqualToConstant:130],
+        [mw3Button.heightAnchor constraintEqualToConstant:30]
+    ]];
+#endif
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
         [_status.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:24],
@@ -322,6 +338,16 @@ static void *KISEngineThreadMain(void *argument)
     ]];
 }
 
+#ifdef KISAK_MP
+- (void)selectMW3Preview {
+    [NSUserDefaults.standardUserDefaults setObject:@"mw3_preview" forKey:@"KisakEngineMode"];
+    UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"MW3 preview selected"
+       message:@"Close COD4iOS completely and reopen it. The Dome viewer will start instead of multiplayer. Your copied map bundle will load automatically."
+       preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+#endif
 - (NSString *)documentsPath
 {
     return NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;

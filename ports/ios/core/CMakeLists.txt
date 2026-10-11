@@ -34,6 +34,7 @@ add_library(kisakcod_core STATIC
     core_assert.cpp
     core_services.cpp
     mw3_gameplay_registry.cpp
+    mw3_gameplay_bridge.cpp
 )
 target_compile_features(kisakcod_core PUBLIC cxx_std_17)
 # src/ and deps/ are public so the app can call the reused engine modules

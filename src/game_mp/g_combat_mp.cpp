@@ -3,6 +3,9 @@
 #endif
 
 #include <universal/q_shared.h>
+#if defined(__APPLE__)
+#include "../../ports/ios/core/mw3_combat_adapter.h"
+#endif
 #include "g_public_mp.h"
 #include <qcommon/mem_track.h>
 #include <script/scr_vm.h>
@@ -321,6 +324,15 @@ void __cdecl G_DamageClient(
         }
         if ((uint32_t)hitLoc > HITLOC_GUN)
             MyAssertHandler(".\\game_mp\\g_combat_mp.cpp", 489, 0, "%s", "(hitLoc >= HITLOC_NONE) && (hitLoc < HITLOC_NUM)");
+#if defined(__APPLE__)
+        // Optional MW3 tuning: no registered override preserves COD4 damage.
+        if (weapon > 0 && weapon < BG_GetNumWeapons())
+        {
+            WeaponDef *mw3Weapon = BG_GetWeaponDef(weapon);
+            if (mw3Weapon && mw3Weapon->szInternalName)
+                damage = mw3_optional_weapon_damage(MW3_MODE_MULTIPLAYER, mw3Weapon->szInternalName, damage);
+        }
+#endif
         if (mod != MOD_MELEE)
             damage = (int)(G_GetWeaponHitLocationMultiplier(hitLoc, weapon) * (double)damage);
         if (damage <= 0)

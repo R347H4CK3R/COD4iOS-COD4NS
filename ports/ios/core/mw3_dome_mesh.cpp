@@ -15,7 +15,39 @@ bool DomeMesh::load(const std::string& path) {
  std::uint64_t vertex_count=0,triangle_count=0;
  f.read(magic,8);f.read(reinterpret_cast<char*>(&vertex_count),8);
  f.read(reinterpret_cast<char*>(&triangle_count),8);
- if(!f || std::memcmp(magic,"DOMMESH1",8)!=0){error_="invalid magic";return false;}
+ if(!f){error_="invalid header";return false;}
+ if(std::memcmp(magic,"MW3MESH2",8)==0) {
+  std::uint64_t material_count=0;
+  f.read(reinterpret_cast<char*>(&material_count),8);
+  if(!f || !vertex_count || !triangle_count || triangle_count>1000000 ||
+     material_count==0 || material_count>100000 ||
+     static_cast<std::uint64_t>(bytes)!=32+64*triangle_count){
+   error_="invalid MW3MESH2 dimensions";return false;
+  }
+  triangles_.reserve(static_cast<std::size_t>(triangle_count));
+  for(std::uint64_t i=0;i<triangle_count;++i){
+   DomeTriangle t{};
+   DomeVertex* dst[3]={&t.a,&t.b,&t.c};
+   for(auto* v:dst){
+    float record[5]{};
+    f.read(reinterpret_cast<char*>(record),sizeof record);
+    if(!f || !std::isfinite(record[0]) || !std::isfinite(record[1]) ||
+       !std::isfinite(record[2]) || !std::isfinite(record[3]) ||
+       !std::isfinite(record[4])){
+     triangles_.clear();error_="nonfinite textured vertex";return false;
+    }
+    *v={record[0],record[1],record[2]};
+   }
+   std::uint32_t material=0;
+   f.read(reinterpret_cast<char*>(&material),4);
+   if(!f || material>=material_count){
+    triangles_.clear();error_="invalid textured material index";return false;
+   }
+   triangles_.push_back(t);
+  }
+  return true;
+ }
+ if(std::memcmp(magic,"DOMMESH1",8)!=0){error_="invalid magic";return false;}
  if(vertex_count==0 || triangle_count==0 || triangle_count>1000000){
   error_="invalid dimensions";return false;
  }

@@ -307,6 +307,32 @@ static UIButton *button(NSString *text,id target,SEL action) {
                     if(!dome.load(std::string(localURL.fileSystemRepresentation)))
                         throw std::runtime_error(dome.error());
                     mesh=std::make_shared<assets::BspMesh>(mw3::makeDomePreviewMesh(dome));
+                    // Optional private sidecar with source spawn locations. The
+                    // preview still has no player collision or multiplayer logic.
+                    NSURL *spawnURL=[[localURL URLByDeletingLastPathComponent] URLByAppendingPathComponent:@"mp_dome_spawns.json"];
+                    NSData *spawnData=[NSData dataWithContentsOfURL:spawnURL];
+                    if(spawnData) {
+                        NSDictionary *manifest=[NSJSONSerialization JSONObjectWithData:spawnData options:0 error:nil];
+                        NSArray *entries=[manifest isKindOfClass:[NSDictionary class]]?manifest[@"spawns"]:nil;
+                        for(id candidate in entries) {
+                            if(![candidate isKindOfClass:[NSDictionary class]]) continue;
+                            NSDictionary *entry=(NSDictionary *)candidate;
+                            if(![entry[@"classname"] isEqual:@"mp_dm_spawn"]) continue;
+                            NSArray *xyz=entry[@"origin"];
+                            if(![xyz isKindOfClass:[NSArray class]] || xyz.count!=3) continue;
+                            kisakcod::assets::PlayerSpawn spawn{};
+                            bool finite=true;
+                            for(int k=0;k<3;k++) {
+                                if(![xyz[k] respondsToSelector:@selector(floatValue)]) {finite=false;break;}
+                                spawn.position[k]=[xyz[k] floatValue];
+                                finite=finite && std::isfinite(spawn.position[k]);
+                            }
+                            if(!finite) continue;
+                            mesh->spawn=spawn;
+                            break;
+                        }
+                    }
+
                 } else {
                     mesh=std::make_shared<assets::BspMesh>(assets::loadMap(std::string(localURL.fileSystemRepresentation)));
                 }

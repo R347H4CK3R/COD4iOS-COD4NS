@@ -41,6 +41,7 @@ add_library(kisakcod_core STATIC
     mw3_equipment_adapter.cpp
     mw3_survival_waves.cpp
     mw3_dome_mesh.cpp
+    mw3_dome_ground.cpp
     mw3_dome_preview.cpp
 )
 target_compile_features(kisakcod_core PUBLIC cxx_std_17)

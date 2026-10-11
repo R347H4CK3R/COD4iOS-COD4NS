@@ -31,3 +31,7 @@ add_test(NAME mw3_equipment_tests COMMAND mw3_equipment_tests)
 add_executable(mw3_survival_tests mw3_survival_tests.cpp)
 target_link_libraries(mw3_survival_tests PRIVATE kisakcod_core)
 add_test(NAME mw3_survival_tests COMMAND mw3_survival_tests)
+
+add_executable(mw3_dome_mesh_tests mw3_dome_mesh_tests.cpp)
+target_link_libraries(mw3_dome_mesh_tests PRIVATE kisakcod_core)
+add_test(NAME mw3_dome_mesh_tests COMMAND mw3_dome_mesh_tests)

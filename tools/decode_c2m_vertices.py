@@ -28,12 +28,23 @@ for off in range(32,min(len(b)-40,65536)):
  candidates.append((off,v,s,f,start))
 if len(candidates)!=1:raise SystemExit(f'Expected one plausible vertex section, found {len(candidates)}: {candidates[:5]}')
 off,vc,sc,fc,start=candidates[0]
+normal_start=start+vc*12
+uv_start=normal_start+vc*12
+if uv_start+vc*12>len(b):raise SystemExit('Truncated normal/UV region')
+normals=memoryview(b)[normal_start:uv_start]
+uvs=memoryview(b)[uv_start:uv_start+vc*12]
 a.output.parent.mkdir(parents=True,exist_ok=True)
 with a.output.open('w',encoding='utf8') as o:
  o.write(f'# C2M {name} vertices only; NO FACES; not playable geometry\n')
  for x,y,z in struct.iter_unpack('<3f',memoryview(b)[start:start+vc*12]):
   if not all(map(math.isfinite,(x,y,z))):raise SystemExit('Nonfinite vertex')
   o.write(f'v {x:.7f} {y:.7f} {z:.7f}\n')
+ for nx,ny,nz in struct.iter_unpack('<3f',normals):
+  if not all(map(math.isfinite,(nx,ny,nz))):raise SystemExit('Nonfinite normal')
+  o.write(f'vn {nx:.7f} {ny:.7f} {nz:.7f}\n')
+ for aux,u,v in struct.iter_unpack('<I2f',uvs):
+  if not all(map(math.isfinite,(u,v))):raise SystemExit('Nonfinite UV')
+  o.write(f'vt {u:.7f} {v:.7f}\n')
 checked=None
 if a.compare_obj:
  with a.compare_obj.open(encoding='utf8',errors='replace') as original,a.output.open() as decoded:

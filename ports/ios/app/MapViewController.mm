@@ -202,6 +202,48 @@ static UIButton *button(NSString *text,id target,SEL action) {
         _status.text=@"Verifica del codice MD4/Huffman non riuscita."; _open.enabled=NO;
     }
     if(_open.enabled) {
+        // Prefer private maps already copied into the app data container.
+        // A folder may be placed under Application Support/ImportedMW3,
+        // Application Support, or Documents; no file picker is required.
+        NSFileManager *fm=[NSFileManager defaultManager];
+        NSMutableArray<NSURL *> *roots=[NSMutableArray new];
+        for(NSNumber *location in @[@(NSApplicationSupportDirectory),@(NSDocumentDirectory)]) {
+            NSURL *base=[fm URLForDirectory:(NSSearchPathDirectory)location.unsignedIntegerValue
+                                  inDomain:NSUserDomainMask appropriateForURL:nil create:YES error:nil];
+            if(base) {
+                [roots addObject:[base URLByAppendingPathComponent:@"ImportedMW3" isDirectory:YES]];
+                [roots addObject:base];
+            }
+        }
+        NSURL *selected=nil;
+        for(NSURL *root in roots) {
+            NSArray<NSURL *> *folders=[fm contentsOfDirectoryAtURL:root
+                        includingPropertiesForKeys:@[NSURLIsDirectoryKey] options:NSDirectoryEnumerationSkipsHiddenFiles error:nil];
+            for(NSURL *folder in [folders sortedArrayUsingComparator:^NSComparisonResult(NSURL *a, NSURL *b) {
+                return [a.lastPathComponent compare:b.lastPathComponent options:NSCaseInsensitiveSearch];
+            }]) {
+                if(![folder.pathExtension.lowercaseString isEqualToString:@"mw3map"])continue;
+                NSNumber *isDirectory=nil;
+                [folder getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:nil];
+                if(!isDirectory.boolValue)continue;
+                NSString *map=[folder.lastPathComponent stringByDeletingPathExtension];
+                NSURL *mesh=[folder URLByAppendingPathComponent:[map stringByAppendingString:@"_textured.bin"]];
+                NSURL *manifest=[folder URLByAppendingPathComponent:[map stringByAppendingString:@"_texture_manifest.json"]];
+                if([fm fileExistsAtPath:mesh.path] && [fm fileExistsAtPath:manifest.path]) {
+                    selected=mesh;
+                    if([map isEqualToString:@"mp_dome"])break;
+                }
+            }
+            if(selected)break;
+        }
+        if(selected) {
+            _loading=YES;_open.enabled=NO;
+            _status.text=@"Loading MW3 map from app storage…";
+            NSURL *mesh=selected;
+            dispatch_async(dispatch_get_main_queue(),^{[weakSelf loadURL:mesh];});
+        }
+    }
+    if(_open.enabled && !_loading) {
         NSArray<NSURL *> *bundled=[NSBundle.mainBundle URLsForResourcesWithExtension:@"ff" subdirectory:nil];
         if(!bundled.count) bundled=[NSBundle.mainBundle URLsForResourcesWithExtension:@"d3dbsp" subdirectory:nil];
         if(bundled.count==1) {

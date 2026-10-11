@@ -65,7 +65,8 @@ fragment float4 tex_fragment(TexOut in [[stage_in]],
     NSUInteger _indexCount;
     ios::Camera _camera, _initialCamera;
     BOOL _boundedPreview;
-    ios::Vec3 _worldMin{}, _worldMax{};
+    ios::Vec3 _worldMin;
+    ios::Vec3 _worldMax;
 
     CFTimeInterval _lastFrame;
     dispatch_semaphore_t _inflight;

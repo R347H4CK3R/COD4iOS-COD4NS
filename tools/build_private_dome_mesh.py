@@ -5,13 +5,14 @@ This is NOT a compiled COD4 BSP and does not provide verified collision."""
 import argparse, json, struct, hashlib, math
 from pathlib import Path
 ap=argparse.ArgumentParser()
+ap.add_argument('--map',default='mp_dome')
 ap.add_argument('--obj',type=Path,required=True)
 ap.add_argument('--spawns',type=Path,required=True)
 ap.add_argument('--output-dir',type=Path,required=True)
 a=ap.parse_args()
 a.output_dir.mkdir(parents=True,exist_ok=True)
 v=[];faces=0;tris=0;rejected=0
-mesh=a.output_dir/'mp_dome_triangles.bin'
+mesh=a.output_dir/(a.map+'_triangles.bin')
 with mesh.open('wb') as out, a.obj.open(encoding='utf8',errors='replace') as inp:
  out.write(b'DOMMESH1'+struct.pack('<QQ',0,0))
  for line in inp:
@@ -36,7 +37,7 @@ with mesh.open('wb') as out, a.obj.open(encoding='utf8',errors='replace') as inp
     tris+=1
  out.seek(8);out.write(struct.pack('<QQ',len(v),tris))
 sp=json.loads(a.spawns.read_text(encoding='utf8'))
-payload={'format':'DOMMESH1','source':'mp_dome','vertex_count':len(v),'face_count':faces,'triangle_count':tris,'degenerate_index_triangles':rejected,'spawns':len(sp['spawns']),'mesh_file':mesh.name,'mesh_sha256':hashlib.sha256(mesh.read_bytes()).hexdigest(),'requires_runtime_loader':True,'collision_verified':False,'cod4_bsp':False}
+payload={'format':'DOMMESH1','source':a.map,'vertex_count':len(v),'face_count':faces,'triangle_count':tris,'degenerate_index_triangles':rejected,'spawns':len(sp['spawns']),'mesh_file':mesh.name,'mesh_sha256':hashlib.sha256(mesh.read_bytes()).hexdigest(),'requires_runtime_loader':True,'collision_verified':False,'cod4_bsp':False}
 (a.output_dir/'manifest.json').write_text(json.dumps(payload,indent=2),encoding='utf8')
-(a.output_dir/'mp_dome_spawns.json').write_text(json.dumps(sp,indent=2),encoding='utf8')
+(a.output_dir/(a.map+'_spawns.json')).write_text(json.dumps(sp,indent=2),encoding='utf8')
 print(json.dumps(payload,indent=2))

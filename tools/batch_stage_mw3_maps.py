@@ -25,12 +25,12 @@ for i,folder in enumerate(maps):
   try:
    def run(script,*args):
     subprocess.run([sys.executable,str(root/script),*map(str,args)],check=True,capture_output=True,text=True)
-   run('extract_dome_spawns.py','--entities',ent,'--output',dst/'spawns.json')
-   run('build_private_dome_mesh.py','--obj',obj,'--spawns',dst/'spawns.json','--output-dir',dst)
+   run('extract_dome_spawns.py','--map',name,'--entities',ent,'--output',dst/'spawns.json')
+   run('build_private_dome_mesh.py','--map',name,'--obj',obj,'--spawns',dst/'spawns.json','--output-dir',dst)
    run('audit_dome_materials.py','--materials',materials,'--output',dst/'material_audit.json')
    run('stage_private_dome_textures.py','--audit',dst/'material_audit.json','--images',a.images,'--stage',dst)
    status['stage']='completed_preview_assets'
-   status['mesh_size']=(dst/'mp_dome_triangles.bin').stat().st_size
+   status['mesh_size']=(dst/(name+'_triangles.bin')).stat().st_size
   except Exception as e:status['stage']='failed';status['error']=str(e)[:250]
  statuses.append(status)
 summary={'maps':len(statuses),'ready_exported':sum(not x['missing_exports'] for x in statuses),'staged':sum(x['stage']=='completed_preview_assets' for x in statuses),'records':statuses,'note':'All map-derived artifacts remain private. C2M by itself lacks directly exported OBJ/entities/materials required by this pipeline.'}

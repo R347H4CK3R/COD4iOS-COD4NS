@@ -3,6 +3,7 @@
 import argparse,collections,json,re
 from pathlib import Path
 a=argparse.ArgumentParser()
+a.add_argument('--map',default='mp_dome')
 a.add_argument('--entities',type=Path,required=True)
 a.add_argument('--output',type=Path,required=True)
 args=a.parse_args()
@@ -20,7 +21,7 @@ for block in entities:
  if len(xyz)!=3:continue
  spawns.append({'classname':kind,'origin':xyz,'angles':pairs.get('angles',pairs.get('angle','0'))})
  types[kind]+=1
-result={'map':'mp_dome','total_entities':len(entities),'spawn_count':len(spawns),'by_type':dict(types),'spawns':spawns,
+result={'map':args.map,'total_entities':len(entities),'spawn_count':len(spawns),'by_type':dict(types),'spawns':spawns,
  'note':'Local private extracted metadata; coordinates are unverified until COD4 collision and map integration.'}
 args.output.parent.mkdir(parents=True,exist_ok=True)
 args.output.write_text(json.dumps(result,indent=2))

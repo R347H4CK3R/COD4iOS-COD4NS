@@ -2,11 +2,37 @@ name: IW5 snapshot core validation
 on:
   push:
     branches: ['codex/iw5-native-snapshot-core']
-    paths: ['iw5-native-core/**', '.github/workflows/iw5-native-core.yml']
+    paths: ['iw5-native-core/**', 'ports/ios/assets/**', 'ports/ios/app/MapViewController.mm', '.github/workflows/iw5-native-core.yml']
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
+  apple-preview:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test asset adapters with sanitizers
+        run: |
+          cmake -S ports/ios/assets -B build/preview-host -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_FLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer' -DCMAKE_CXX_FLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer'
+          cmake --build build/preview-host --parallel 2
+          ctest --test-dir build/preview-host --output-on-failure
+      - name: Build unsigned ARM64 geometry preview
+        run: |
+          cmake -S . -B build/geometry-preview -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY -DKISAK_BUILD_ENGINE=OFF -DBUILD_TESTING=OFF
+          cmake --build build/geometry-preview --config Release --target KisakCOD-iOS -- CODE_SIGNING_ALLOWED=NO
+          test "$(xcrun lipo -archs build/geometry-preview/ports/ios/Release-iphoneos/KisakCOD-iOS.app/KisakCOD-iOS)" = arm64
+      - name: Stage app and corresponding source
+        run: |
+          mkdir -p build/preview-deliverable
+          ditto build/geometry-preview/ports/ios/Release-iphoneos/KisakCOD-iOS.app build/preview-deliverable/KisakCOD-iOS.app
+          git archive --format=tar.gz HEAD > build/preview-deliverable/corresponding-source.tar.gz
+          printf 'Unsigned ARM64 iOS geometry preview. No game assets. No MW3 gameplay or Plutonium. Requires local Xcode signing to run on a device. Source commit: %s\n' "$GITHUB_SHA" > build/preview-deliverable/README.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iw5-geometry-preview-unsigned-app-and-source
+          path: build/preview-deliverable
+          if-no-files-found: error
   apple-core:
     runs-on: macos-15
     timeout-minutes: 15

@@ -6,6 +6,7 @@
 #import "MetalRenderer.h"
 #include "kisak_core.h"
 #include "FastfileWorld.hpp"
+#include "IW5Snapshot.hpp"
 #include <memory>
 #include <cmath>
 #include <cstdio>
@@ -239,7 +240,7 @@ static UIButton *button(NSString *text,id target,SEL action) {
         }
         if(selected) {
             _loading=YES;_open.enabled=NO;
-            _status.text=@"Loading MW3 map from app storage�";
+            _status.text=@"Loading MW3 map from app storage…";
             NSURL *mesh=selected;
             dispatch_async(dispatch_get_main_queue(),^{[weakSelf loadURL:mesh];});
         }
@@ -347,7 +348,7 @@ static UIButton *button(NSString *text,id target,SEL action) {
     [url getResourceValue:&directory forKey:NSURLIsDirectoryKey error:nil];
     if(directory.boolValue && [url.pathExtension.lowercaseString isEqualToString:@"mw3map"]) {
         _loading=YES;_open.enabled=NO;
-        _status.text=@"Importing private MW3 map bundle�";
+        _status.text=@"Importing private MW3 map bundle…";
         __weak KISMapViewController *weakSelf=self;
         dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
             BOOL scoped=[url startAccessingSecurityScopedResource];
@@ -384,7 +385,7 @@ static UIButton *button(NSString *text,id target,SEL action) {
         _hasMap=YES;_renderFailed=NO;_welcome.hidden=YES;_touchView.hidden=NO;
         _reset.hidden=NO;_up.hidden=NO;_down.hidden=NO;
         _mapName.text=url.lastPathComponent;
-        _status.text=@"MW3 texture preview � free flight � no physics/multiplayer";
+        _status.text=@"MW3 texture preview · free flight · no physics/multiplayer";
         [self updateRunning];return;
     }
     // Security-scoped access and coordination let File Provider/iCloud materialize
@@ -398,7 +399,9 @@ static UIButton *button(NSString *text,id target,SEL action) {
         NSFileCoordinator *coordinator=[[NSFileCoordinator alloc] initWithFilePresenter:nil];
         [coordinator coordinateReadingItemAtURL:url options:0 error:&coordinationError byAccessor:^(NSURL *localURL) {
             try {
-                if([localURL.pathExtension.lowercaseString isEqualToString:@"bin"] &&
+                if([localURL.pathExtension.lowercaseString isEqualToString:@"iw5geo"]) {
+                    mesh=std::make_shared<assets::BspMesh>(assets::loadIW5Snapshot(std::string(localURL.fileSystemRepresentation)));
+                } else if([localURL.pathExtension.lowercaseString isEqualToString:@"bin"] &&
                    [localURL.lastPathComponent isEqualToString:@"mp_dome_triangles.bin"]) {
                     mw3::DomeMesh dome;
                     if(!dome.load(std::string(localURL.fileSystemRepresentation)))
@@ -466,6 +469,8 @@ static UIButton *button(NSString *text,id target,SEL action) {
             controller->_mapName.lineBreakMode=NSLineBreakByTruncatingMiddle;
             controller->_mapName.numberOfLines=1;
             controller->_status.text=[NSString stringWithFormat:@"%lu triangoli · Sinistra: muovi / destra: guarda · Volo libero, senza collisioni",(unsigned long)(mesh->indices.size()/3)];
+            if([url.pathExtension.lowercaseString isEqualToString:@"iw5geo"])
+                controller->_status.text=[NSString stringWithFormat:@"IW5 geometry preview · %lu triangles · Free flight · No textures, collision or gameplay",(unsigned long)(mesh->indices.size()/3)];
             [controller setNeedsUpdateOfHomeIndicatorAutoHidden];
             [controller updateRunning];
         });

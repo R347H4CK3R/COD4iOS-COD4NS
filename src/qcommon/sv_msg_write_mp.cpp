@@ -9,6 +9,7 @@
 #include <server_mp/server_mp.h>
 #include <universal/profile.h>
 #include <cgame/cg_local.h>
+#include <cmath>
 
 netFieldOrderInfo_t orderInfo;
 
@@ -2633,6 +2634,43 @@ void __cdecl MSG_WriteDeltaHudElems(
     uint32_t inuse; // [esp+28h] [ebp-4h]
 
     iassert( !msg->readOnly );
+    // Sanitize only the outgoing snapshot copies, never gameplay HUD state.
+    // HUD coordinates use a signed 12-bit centered representation ([-2048,2048)).
+    hudelem_s safeFrom[31], safeTo[31];
+    if (count == 31)
+    {
+        for (uint32_t n = 0; n < count; ++n)
+        {
+            safeFrom[n] = from[n];
+            safeTo[n] = to[n];
+            hudelem_s *pairs[] = { &safeFrom[n], &safeTo[n] };
+            for (auto *h : pairs)
+            {
+                auto safeCoord = [](float &v) -> bool {
+                    if (std::isfinite(v) && v >= -2048.0f && v < 2048.0f)
+                        return false;
+                    v = 0.0f;
+                    return true;
+                };
+                bool corrected = safeCoord(h->x);
+                corrected = safeCoord(h->y) || corrected;
+                corrected = safeCoord(h->fromX) || corrected;
+                corrected = safeCoord(h->fromY) || corrected;
+                if ((h->alignOrg & ~15) || ((h->alignOrg & 3) == 3) ||
+                    (((h->alignOrg >> 2) & 3) == 3))
+                {
+                    h->alignOrg = 0;
+                    corrected = true;
+                }
+                if (corrected)
+                    Com_PrintWarning(CON_CHANNEL_SERVER,
+                        "HUD snapshot: sanitized malformed element %u for client %d\n",
+                        n, snapInfo->clientNum);
+            }
+        }
+        from = safeFrom;
+        to = safeTo;
+    }
     if (count != 31)
         MyAssertHandler(
             ".\\qcommon\\sv_msg_write_mp.cpp",

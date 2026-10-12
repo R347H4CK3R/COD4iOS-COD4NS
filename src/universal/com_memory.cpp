@@ -830,7 +830,8 @@ void __cdecl Hunk_InitDebugMemory()
         MyAssertHandler(".\\universal\\com_memory.cpp", 2743, 0, "%s", "Sys_IsMainThread()");
     if (g_debugUser)
         MyAssertHandler(".\\universal\\com_memory.cpp", 2744, 0, "%s", "!g_debugUser");
-    g_debugUser = Hunk_UserCreate(0x1000000, "Hunk_InitDebugMemory", 0, 0, 0);
+    // Leave room for the HunkUser header when a mod requests 16 MiB of debug memory.
+    g_debugUser = Hunk_UserCreate(0x2000000, "Hunk_InitDebugMemory", 0, 0, 0);
 }
 
 void __cdecl Hunk_ShutdownDebugMemory()

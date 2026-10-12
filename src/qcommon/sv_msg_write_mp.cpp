@@ -2656,6 +2656,14 @@ void __cdecl MSG_WriteDeltaHudElems(
                 corrected = safeCoord(h->y) || corrected;
                 corrected = safeCoord(h->fromX) || corrected;
                 corrected = safeCoord(h->fromY) || corrected;
+                // HUD Z uses world-origin wire encoding, not 12-bit screen-space
+                // coordinates. Invalid values must not enter MSG_WriteOriginZFloat.
+                if (!std::isfinite(h->z) || h->z < svsHeader.mapCenter[2] - 32768.0f ||
+                    h->z >= svsHeader.mapCenter[2] + 32767.0f)
+                {
+                    h->z = svsHeader.mapCenter[2];
+                    corrected = true;
+                }
                 if ((h->alignOrg & ~15) || ((h->alignOrg & 3) == 3) ||
                     (((h->alignOrg >> 2) & 3) == 3))
                 {

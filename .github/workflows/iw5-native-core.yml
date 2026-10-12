@@ -1,0 +1,40 @@
+name: IW5 snapshot core validation
+on:
+  push:
+    branches: ['codex/iw5-native-snapshot-core']
+    paths: ['iw5-native-core/**', '.github/workflows/iw5-native-core.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  apple-core:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record toolchain
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          cmake --version
+      - name: Host sanitizer tests
+        run: |
+          cmake -S iw5-native-core/native -B build/iw5-host -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_FLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer'
+          cmake --build build/iw5-host --parallel 2
+          ctest --test-dir build/iw5-host --output-on-failure
+      - name: Build ARM64 iPhoneOS static library
+        run: |
+          cmake -S iw5-native-core/native -B build/iw5-ios -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY
+          cmake --build build/iw5-ios --config Release --target iw5geo -- CODE_SIGNING_ALLOWED=NO
+          test "$(xcrun lipo -archs build/iw5-ios/Release-iphoneos/libiw5geo.a)" = arm64
+      - name: Stage library and corresponding source
+        run: |
+          mkdir -p build/iw5-deliverable
+          cp build/iw5-ios/Release-iphoneos/libiw5geo.a build/iw5-deliverable/
+          cp -R iw5-native-core build/iw5-deliverable/source
+          shasum -a 256 build/iw5-deliverable/libiw5geo.a > build/iw5-deliverable/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iw5-snapshot-core-ios-arm64-library-and-source
+          path: build/iw5-deliverable
+          if-no-files-found: error

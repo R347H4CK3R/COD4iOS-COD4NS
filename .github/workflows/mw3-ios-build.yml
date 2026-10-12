@@ -8,6 +8,7 @@ on:
       - 'ports/ios/engine/apple_sys.cpp'
       - 'src/universal/com_files.cpp'
       - 'src/universal/com_hunkuser.cpp'
+      - 'src/universal/com_memory.cpp'
       - 'ports/ios/core/mw3_*'
       - 'src/bgame/bg_weapons.cpp'
       - 'src/game_mp/g_combat_mp.cpp'

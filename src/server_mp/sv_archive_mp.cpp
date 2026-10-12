@@ -79,13 +79,35 @@ void __cdecl SV_ArchiveSnapshot(msg_t *msg)
                 MSG_WriteLong(msg, svsHeader.time);
                 maxclients = svsHeader.maxclients;
                 num_clients = v36->num_clients;
+                if (maxclients <= 0 || maxclients > 64 || num_clients < 0 ||
+                    num_clients > maxclients)
+                {
+                    Com_PrintWarning(CON_CHANNEL_SERVER,
+                        "SV_ArchiveSnapshot: invalid cached client count %d (max %d); dropping delta\n",
+                        num_clients, maxclients);
+                    break;
+                }
                 v37 = 0;
                 v18 = 0;
                 v21 = 0;
                 MSG_ClearLastReferencedEntity(msg);
-                while (v18 < maxclients || v21 < num_clients)
+                // Never access svsHeader.clients outside its active client count,
+                // even if a cached snapshot contains invalid client indices.
+                while (v18 < maxclients)
                 {
-                    if (v18 >= maxclients || svsHeader.clients[v18].header.state >= CS_CONNECTED)
+                    if (v21 < num_clients)
+                    {
+                        const int cachedIndex = svsHeader.cachedSnapshotClients[
+                            (v21 + v36->first_client) % 4096].cs.clientIndex;
+                        if (cachedIndex < 0 || cachedIndex >= maxclients)
+                        {
+                            Com_PrintWarning(CON_CHANNEL_SERVER,
+                                "SV_ArchiveSnapshot: invalid cached client index %d; dropping delta\n",
+                                cachedIndex);
+                            break;
+                        }
+                    }
+                    if (svsHeader.clients[v18].header.state >= CS_CONNECTED)
                     {
                         if (v21 < num_clients)
                         {

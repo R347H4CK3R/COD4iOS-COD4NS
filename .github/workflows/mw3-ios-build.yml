@@ -5,6 +5,7 @@ on:
     paths:
       - 'ports/ios/app/launcher.mm'
       - 'ports/ios/app/engine_app.mm'
+      - 'ports/ios/engine/apple_sys.cpp'
       - 'ports/ios/core/mw3_*'
       - 'src/bgame/bg_weapons.cpp'
       - 'src/game_mp/g_combat_mp.cpp'

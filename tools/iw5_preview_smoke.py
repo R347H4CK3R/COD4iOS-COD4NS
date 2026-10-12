@@ -62,12 +62,14 @@ def probe(app,output):
         record['render_verified']=True;save()
         time.sleep(2)
     finally:
-        if booted:
-            command('io',device,'screenshot',output/'simulator.png',check=False)
-            command('spawn',device,'log','show','--last','3m','--style','compact','--predicate','process == "KisakCOD-iOS"',check=False)
-            command('shutdown',device,check=False)
-        command('delete',device,check=False)
-        save()
+        try:
+            if booted:
+                command('io',device,'screenshot',output/'simulator.png',check=record['render_verified'])
+                command('spawn',device,'log','show','--last','3m','--style','compact','--predicate','process == "KisakCOD-iOS"',check=False)
+        finally:
+            if booted:command('shutdown',device,check=False)
+            command('delete',device,check=False)
+            save()
 
 
 def main():

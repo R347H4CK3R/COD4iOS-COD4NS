@@ -11,6 +11,7 @@
 #import <QuartzCore/CAMetalLayer.h>
 #import <QuartzCore/CADisplayLink.h>
 #import <GameController/GameController.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include "../engine/controller_input.h"
 #import "touch_controls.h"
 #import "client_patch.h"
@@ -290,7 +291,7 @@ static void *KISEngineThreadMain(void *argument)
     return nullptr;
 }
 
-@interface KISEngineViewController : UIViewController <UIGestureRecognizerDelegate>
+@interface KISEngineViewController : UIViewController <UIGestureRecognizerDelegate, UIDocumentPickerDelegate>
 @end
 
 @implementation KISEngineViewController {
@@ -429,6 +430,7 @@ static void *KISEngineThreadMain(void *argument)
     if([choice containsString:@"Game"]){[self modCategory:@"GAME" entries:@[@"Mods",@"Back"]];return;}
     if([choice containsString:@"Visuals"]){[self modCategory:@"VISUALS" entries:@[@"Toggle touch controls",@"Back"]];return;}
     if([choice containsString:@"Toggle touch controls"]){_touchControls.hidden=!_touchControls.hidden;return;}
+    if([choice containsString:@"Import Mod Folder"]){[self importModFolder];return;}
     if([choice containsString:@"Mods"]){[self modList];return;}
     if([choice containsString:@"No mod"]){[NSUserDefaults.standardUserDefaults removeObjectForKey:@"COD4SelectedMod"];[self modMessage:@"Close and reopen the app to return to base COD4."];return;}
     if([choice containsString:@"Load: "]) {
@@ -441,7 +443,7 @@ static void *KISEngineThreadMain(void *argument)
 - (void)modList {
     NSString *path=[[self documentsPath] stringByAppendingPathComponent:@"mods"];
     NSArray *files=[[NSFileManager defaultManager] contentsOfDirectoryAtPath:path error:nil]?:@[];
-    NSMutableArray *entries=[NSMutableArray arrayWithObject:@"No mod"];
+    NSMutableArray *entries=[NSMutableArray arrayWithObjects:@"Import Mod Folder",@"No mod",nil];
     NSCharacterSet *bad=[[NSCharacterSet characterSetWithCharactersInString:@"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"] invertedSet];
     for(NSString *name in [files sortedArrayUsingSelector:@selector(compare:)]) {
       BOOL dir=NO;
@@ -451,6 +453,47 @@ static void *KISEngineThreadMain(void *argument)
       if(entries.count>=5)break;
     }
     [entries addObject:@"Back"];[self modCategory:@"MODS // Documents/mods" entries:entries];
+}
+- (void)importModFolder {
+    UIDocumentPickerViewController *picker=[[UIDocumentPickerViewController alloc]
+        initForOpeningContentTypes:@[UTTypeFolder] asCopy:NO];
+    picker.delegate=self;
+    picker.allowsMultipleSelection=NO;
+    [self presentViewController:picker animated:YES completion:nil];
+}
+- (void)documentPicker:(UIDocumentPickerViewController *)controller
+ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
+    NSURL *source=urls.firstObject;
+    if(!source)return;
+    BOOL secured=[source startAccessingSecurityScopedResource];
+    NSFileManager *fm=NSFileManager.defaultManager;
+    NSString *base=[[self documentsPath] stringByAppendingPathComponent:@"mods"];
+    NSError *err=nil;
+    [fm createDirectoryAtPath:base withIntermediateDirectories:YES attributes:nil error:&err];
+    NSString *name=source.lastPathComponent;
+    // Only single, safe path components are accepted.
+    NSCharacterSet *bad=[[NSCharacterSet characterSetWithCharactersInString:
+        @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"] invertedSet];
+    if(!name.length || name.length>40 || [name rangeOfCharacterFromSet:bad].location!=NSNotFound) {
+        err=[NSError errorWithDomain:@"COD4Mods" code:1
+            userInfo:@{NSLocalizedDescriptionKey:@"Rename the mod folder with letters, numbers, _ or - and import again."}];
+    }
+    if(!err){
+        NSString *dest=[base stringByAppendingPathComponent:name];
+        if([fm fileExistsAtPath:dest]) {
+            err=[NSError errorWithDomain:@"COD4Mods" code:2
+                userInfo:@{NSLocalizedDescriptionKey:@"That mod folder already exists. Remove or rename it before importing."}];
+        } else {
+            [fm copyItemAtURL:source toURL:[NSURL fileURLWithPath:dest isDirectory:YES] error:&err];
+        }
+    }
+    if(secured)[source stopAccessingSecurityScopedResource];
+    [self modList];
+    [self modMessage:err?err.localizedDescription:
+         @"Imported to COD4iOS Documents/mods. Reopen the built-in Mods menu to refresh."];
+}
+- (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller {
+    (void)controller;
 }
 - (void)checkModCombo {
     BOOL down=NO;

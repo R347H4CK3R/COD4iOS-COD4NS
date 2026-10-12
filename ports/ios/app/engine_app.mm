@@ -456,7 +456,7 @@ static void *KISEngineThreadMain(void *argument)
 }
 - (void)importModFolder {
     UIDocumentPickerViewController *picker=[[UIDocumentPickerViewController alloc]
-        initForOpeningContentTypes:@[UTTypeFolder] asCopy:NO];
+        initWithDocumentTypes:@[@"public.folder"] inMode:UIDocumentPickerModeOpen];
     picker.delegate=self;
     picker.allowsMultipleSelection=NO;
     [self presentViewController:picker animated:YES completion:nil];

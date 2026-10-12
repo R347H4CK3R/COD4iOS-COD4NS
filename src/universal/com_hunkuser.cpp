@@ -38,7 +38,9 @@ void *Hunk_UserAlloc(HunkUser *user, std::uint32_t size, int alignment)
     // the chain repeatedly would never make progress.
     const auto startOffset = Hunk_AlignUp(offsetof(HunkUser, buf), alignment);
     if (startOffset > std::size_t(user->maxSize) || size > std::size_t(user->maxSize) - startOffset) {
-        Com_Error(ERR_FATAL, "Hunk_UserAlloc: request exceeds chunk capacity");
+        Com_Error(ERR_FATAL, "Hunk_UserAlloc: request exceeds chunk capacity (allocator=%s request=%u chunk=%d overhead=%zu alignment=%d fixed=%d)",
+                  user->name ? user->name : "unnamed", unsigned(size), user->maxSize,
+                  std::size_t(startOffset), alignment, int(user->fixed));
         return nullptr;
     }
     // A HunkUser always starts on a page boundary (Z_VirtualReserve). Multiplayer has been seen

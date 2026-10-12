@@ -24,6 +24,13 @@ def valid_report(report):
     return isinstance(report,dict) and report.get('status')=='completed' and type(report.get('index_count')) is int and report['index_count']==24
 
 
+def select_device(devices,sdk):
+    runtime='com.apple.CoreSimulator.SimRuntime.iOS-'+'-'.join(sdk.strip().split('.')[:2])
+    choices=[d for d in devices.get(runtime,[]) if d.get('isAvailable') and d['name'].startswith('iPhone') and d.get('deviceTypeIdentifier')]
+    if not choices:raise RuntimeError('No available iPhone simulator matching active SDK '+sdk)
+    return runtime,choices[0]
+
+
 def probe(app,output):
     output.mkdir(parents=True,exist_ok=True)
     record={'steps':[],'render_verified':False,'physical_device_verified':False}
@@ -39,9 +46,9 @@ def probe(app,output):
         if check and p.returncode: raise RuntimeError(p.stderr)
         return p.stdout.strip()
     inventory=json.loads(command('list','devices','available','--json'))
-    choices=[(runtime,d) for runtime,ds in inventory['devices'].items() if '.iOS-' in runtime for d in ds if d.get('isAvailable') and d['name'].startswith('iPhone') and d.get('deviceTypeIdentifier')]
-    if not choices: raise RuntimeError('No available iPhone simulator runtime')
-    runtime,template=sorted(choices,key=lambda pair:pair[0])[-1]
+    sdk=subprocess.run(['xcrun','--sdk','iphonesimulator','--show-sdk-version'],capture_output=True,text=True,check=True,timeout=30).stdout.strip()
+    record['simulator_sdk']=sdk;save()
+    runtime,template=select_device(inventory['devices'],sdk)
     device=command('create','IW5 geometry smoke',template['deviceTypeIdentifier'],runtime)
     record.update(device=device,runtime=runtime)
     booted=False

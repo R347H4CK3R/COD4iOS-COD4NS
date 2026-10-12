@@ -12,6 +12,11 @@ smoke=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(smoke)
 
 class SmokeTests(unittest.TestCase):
+    def test_runtime_matches_active_sdk(self):
+        device={'isAvailable':True,'name':'iPhone Test','deviceTypeIdentifier':'test-type'}
+        devices={'com.apple.CoreSimulator.SimRuntime.iOS-18-5':[device],'com.apple.CoreSimulator.SimRuntime.iOS-26-2':[device]}
+        self.assertEqual(smoke.select_device(devices,'18.5')[0],'com.apple.CoreSimulator.SimRuntime.iOS-18-5')
+        with self.assertRaises(RuntimeError):smoke.select_device(devices,'19.0')
     def test_fixture_is_synthetic_octahedron(self):
         b=smoke.fixture()
         self.assertEqual(struct.unpack_from('<8s6I',b),(b'IW5GEO1\0',1,6,24,1,44,16))
@@ -27,6 +32,7 @@ class SmokeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td);(root/'data/Documents').mkdir(parents=True)
             def fake_run(args,**kwargs):
+                if args[1]=='--sdk':return SimpleNamespace(returncode=0,stdout='18.5\n',stderr='')
                 action=args[2];calls.append(args[2:]);out='';code=0
                 if action=='list':out=json.dumps({'devices':{'com.apple.CoreSimulator.SimRuntime.iOS-18-5':[{'isAvailable':True,'name':'iPhone Test','deviceTypeIdentifier':'test-type'}]}})
                 elif action=='create':out='own-device-id'

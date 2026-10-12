@@ -280,7 +280,12 @@ static void *KISEngineThreadMain(void *argument)
     // Development aid: engine startup commands (for example "+devmap killhouse")
     // come from KISAK_COMMANDLINE, which simctl forwards as SIMCTL_CHILD_KISAK_COMMANDLINE.
     const char *commandLine = getenv("KISAK_COMMANDLINE");
-    KisakApple_RunEngine(commandLine ? commandLine : "");
+    NSString *mod=[NSUserDefaults.standardUserDefaults stringForKey:@"COD4SelectedMod"];
+    NSString *args=commandLine?[NSString stringWithUTF8String:commandLine]:@"";
+    NSCharacterSet *bad=[[NSCharacterSet characterSetWithCharactersInString:@"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"] invertedSet];
+    if(mod.length && [mod rangeOfCharacterFromSet:bad].location==NSNotFound)
+        args=[NSString stringWithFormat:@"+set fs_game mods/%@ %@",mod,args];
+    KisakApple_RunEngine(args.UTF8String);
     return nullptr;
 }
 
@@ -296,6 +301,9 @@ static void *KISEngineThreadMain(void *argument)
     KISControllerInput *_controllerInput;
     KISTouchControls *_touchControls;
     CADisplayLink *_displayLink;
+    UIView *_modPanel;
+    UIButton *_modToggle;
+    BOOL _modLatched;
 }
 
 - (void)loadView
@@ -314,6 +322,20 @@ static void *KISEngineThreadMain(void *argument)
     _status.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
     _status.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:_status];
+    UIButton *toggle=[UIButton buttonWithType:UIButtonTypeSystem];
+    [toggle setTitle:@"MOD" forState:UIControlStateNormal];
+    toggle.frame=CGRectMake(10,48,62,38);
+    toggle.backgroundColor=UIColor.darkGrayColor;toggle.tintColor=UIColor.cyanColor;
+    [toggle addTarget:self action:@selector(toggleMod) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:toggle];
+    _modToggle=toggle;
+    _modPanel=[[UIView alloc] initWithFrame:CGRectMake(86,38,300,310)];
+    _modPanel.backgroundColor=[UIColor colorWithRed:0.05 green:0.07 blue:0.12 alpha:0.97];
+    _modPanel.layer.borderWidth=1;_modPanel.layer.borderColor=UIColor.cyanColor.CGColor;
+    _modPanel.layer.cornerRadius=9;_modPanel.hidden=YES;
+    [self.view addSubview:_modPanel];
+    [self modCategory:@"COD4 // MOD MENU" entries:@[@"Player",@"Weapons",@"Game",@"Visuals",@"Mods",@"Close"]];
+    [NSTimer scheduledTimerWithTimeInterval:0.12 target:self selector:@selector(checkModCombo) userInfo:nil repeats:YES];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
         [_status.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:24],
@@ -322,6 +344,74 @@ static void *KISEngineThreadMain(void *argument)
     ]];
 }
 
+- (void)modCategory:(NSString *)name entries:(NSArray<NSString *> *)entries {
+    for(UIView *v in _modPanel.subviews)[v removeFromSuperview];
+    UILabel *h=[[UILabel alloc] initWithFrame:CGRectMake(14,8,276,34)];
+    h.text=name;h.textColor=UIColor.cyanColor;h.font=[UIFont monospacedSystemFontOfSize:16 weight:UIFontWeightBold];
+    [_modPanel addSubview:h];
+    for(NSUInteger i=0;i<entries.count;i++) {
+        UIButton *b=[UIButton buttonWithType:UIButtonTypeSystem];
+        [b setTitle:[@"  > " stringByAppendingString:entries[i]] forState:UIControlStateNormal];
+        b.contentHorizontalAlignment=UIControlContentHorizontalAlignmentLeft;
+        b.tintColor=UIColor.whiteColor;b.backgroundColor=[UIColor colorWithWhite:0.17 alpha:0.95];
+        b.frame=CGRectMake(12,48+40*i,276,35);b.tag=i;
+        [b addTarget:self action:@selector(modSelect:) forControlEvents:UIControlEventTouchUpInside];
+        [_modPanel addSubview:b];
+    }
+}
+- (void)toggleMod {
+    _modPanel.hidden=!_modPanel.hidden;
+    [self.view bringSubviewToFront:_modPanel];
+    [self.view bringSubviewToFront:_modToggle];
+}
+- (void)modMessage:(NSString *)message {
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"COD4 MOD MENU" message:message preferredStyle:UIAlertControllerStyleAlert];
+    [a addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+    [self presentViewController:a animated:YES completion:nil];
+}
+- (void)modSelect:(UIButton *)sender {
+    NSArray *names=@[@"Player",@"Weapons",@"Game",@"Visuals",@"Mods",@"Close"];
+    NSString *choice=[sender currentTitle];
+    if([choice containsString:@"Back"]){[self modCategory:@"COD4 // MOD MENU" entries:names];return;}
+    if([choice containsString:@"Close"]){[self toggleMod];return;}
+    if([choice containsString:@"Player"] || [choice containsString:@"Weapons"])
+       {[self modCategory:[choice stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet]
+          entries:@[@"Offline gameplay hooks: not installed",@"Back"]];return;}
+    if([choice containsString:@"Game"]){[self modCategory:@"GAME" entries:@[@"Mods",@"Back"]];return;}
+    if([choice containsString:@"Visuals"]){[self modCategory:@"VISUALS" entries:@[@"Toggle touch controls",@"Back"]];return;}
+    if([choice containsString:@"Toggle touch controls"]){_touchControls.hidden=!_touchControls.hidden;return;}
+    if([choice containsString:@"Mods"]){[self modList];return;}
+    if([choice containsString:@"No mod"]){[NSUserDefaults.standardUserDefaults removeObjectForKey:@"COD4SelectedMod"];[self modMessage:@"Close and reopen the app to return to base COD4."];return;}
+    if([choice containsString:@"Load: "]) {
+       NSString *mod=[choice componentsSeparatedByString:@"Load: "].lastObject;
+       [NSUserDefaults.standardUserDefaults setObject:mod forKey:@"COD4SelectedMod"];
+       [self modMessage:@"Close and reopen COD4iOS to activate this mod."];return;
+    }
+    [self modMessage:@"This offline player or weapon feature is not yet implemented."];
+}
+- (void)modList {
+    NSString *path=[[self documentsPath] stringByAppendingPathComponent:@"mods"];
+    NSArray *files=[[NSFileManager defaultManager] contentsOfDirectoryAtPath:path error:nil]?:@[];
+    NSMutableArray *entries=[NSMutableArray arrayWithObject:@"No mod"];
+    NSCharacterSet *bad=[[NSCharacterSet characterSetWithCharactersInString:@"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"] invertedSet];
+    for(NSString *name in [files sortedArrayUsingSelector:@selector(compare:)]) {
+      BOOL dir=NO;
+      if(name.length>32 || [name rangeOfCharacterFromSet:bad].location!=NSNotFound)continue;
+      if([[NSFileManager defaultManager] fileExistsAtPath:[path stringByAppendingPathComponent:name] isDirectory:&dir] && dir)
+         [entries addObject:[@"Load: " stringByAppendingString:name]];
+      if(entries.count>=5)break;
+    }
+    [entries addObject:@"Back"];[self modCategory:@"MODS // Documents/mods" entries:entries];
+}
+- (void)checkModCombo {
+    BOOL down=NO;
+    for(GCController *c in GCController.controllers) {
+        GCExtendedGamepad *g=c.extendedGamepad;
+        if(g && g.leftShoulder.pressed && g.rightShoulder.pressed && g.dpad.up.pressed)down=YES;
+    }
+    if(down && !_modLatched)[self toggleMod];
+    _modLatched=down;
+}
 - (NSString *)documentsPath
 {
     return NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
@@ -458,6 +548,8 @@ static void *KISEngineThreadMain(void *argument)
         _controllerInput = [KISControllerInput new];
         _touchControls=[[KISTouchControls alloc] initWithFrame:self.view.bounds];
         [self.view addSubview:_touchControls];
+        [self.view bringSubviewToFront:_modPanel];
+        [self.view bringSubviewToFront:_modToggle];
         _controllerInput.touchControls=_touchControls;
         __weak KISControllerInput *input=_controllerInput;
         _touchControls.inputChanged=^{ [input publish]; };

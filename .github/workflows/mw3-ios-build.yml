@@ -10,6 +10,7 @@ on:
       - 'src/universal/com_hunkuser.cpp'
       - 'src/universal/com_memory.cpp'
       - 'src/server_mp/sv_client_mp.cpp'
+      - 'src/qcommon/sv_msg_write_mp.cpp'
       - 'ports/ios/core/mw3_*'
       - 'src/bgame/bg_weapons.cpp'
       - 'src/game_mp/g_combat_mp.cpp'

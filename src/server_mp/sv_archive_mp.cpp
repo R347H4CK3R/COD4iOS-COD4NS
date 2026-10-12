@@ -74,6 +74,28 @@ void __cdecl SV_ArchiveSnapshot(msg_t *msg)
             if (v36->first_entity >= svsHeader.nextCachedSnapshotEntities - 0x4000
                 && v36->first_client >= svsHeader.nextCachedSnapshotClients - 4096)
             {
+                // Validate the complete cached client list BEFORE emitting a
+                // delta-frame header. A corrupt index must fall back to a full
+                // archive frame, rather than writing a partial invalid delta.
+                if (v36->num_clients < 0 || v36->num_clients > svsHeader.maxclients ||
+                    v36->first_client < 0 || svsHeader.maxclients < 1 ||
+                    svsHeader.maxclients > 64)
+                    continue;
+                bool validCachedClients = true;
+                int previousCachedIndex = -1;
+                for (int cached = 0; cached < v36->num_clients; ++cached)
+                {
+                    int index = svsHeader.cachedSnapshotClients[
+                        (cached + v36->first_client) % 4096].cs.clientIndex;
+                    if (index <= previousCachedIndex || index >= svsHeader.maxclients)
+                    {
+                        validCachedClients = false;
+                        break;
+                    }
+                    previousCachedIndex = index;
+                }
+                if (!validCachedClients)
+                    continue;
                 MSG_WriteBit0(msg);
                 MSG_WriteLong(msg, v36->archivedFrame);
                 MSG_WriteLong(msg, svsHeader.time);

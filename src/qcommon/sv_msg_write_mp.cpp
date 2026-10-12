@@ -2671,9 +2671,15 @@ void __cdecl MSG_WriteDeltaHudElems(
                     corrected = true;
                 }
                 if (corrected)
-                    Com_PrintWarning(CON_CHANNEL_SERVER,
-                        "HUD snapshot: sanitized malformed element %u for client %d\n",
-                        n, snapInfo->clientNum);
+                {
+                    static unsigned int malformedHudReports = 0;
+                    ++malformedHudReports;
+                    if (malformedHudReports <= 8 ||
+                        (malformedHudReports % 65536u) == 0)
+                        Com_PrintWarning(CON_CHANNEL_SERVER,
+                            "HUD snapshot: sanitized malformed element %u for client %d (total %u)\n",
+                            n, snapInfo->clientNum, malformedHudReports);
+                }
             }
         }
         from = safeFrom;

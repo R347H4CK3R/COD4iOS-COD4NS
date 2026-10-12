@@ -248,6 +248,7 @@ static UIButton *button(NSString *text,id target,SEL action) {
     if(_open.enabled && !_loading) {
         NSArray<NSURL *> *bundled=[NSBundle.mainBundle URLsForResourcesWithExtension:@"ff" subdirectory:nil];
         if(!bundled.count) bundled=[NSBundle.mainBundle URLsForResourcesWithExtension:@"d3dbsp" subdirectory:nil];
+        if(!bundled.count) bundled=[NSBundle.mainBundle URLsForResourcesWithExtension:@"iw5geo" subdirectory:nil];
         if(bundled.count==1) {
             _loading=YES;_open.enabled=NO;_status.text=@"Caricamento della mappa inclusa nella build personale…";
             dispatch_async(dispatch_get_main_queue(),^{[weakSelf loadURL:bundled.firstObject];});

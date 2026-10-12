@@ -1,0 +1,30 @@
+name: IW5 geometry simulator render probe
+on:
+  push:
+    branches: ['codex/iw5-native-snapshot-core']
+    paths: ['ports/ios/app/**', 'ports/ios/CMakeLists.txt', 'ports/ios/assets/**', 'iw5-native-core/**', 'tools/iw5_preview_smoke.py', 'tests/test_iw5_preview_smoke.py', '.github/workflows/iw5-preview-simulator.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and generate synthetic geometry
+        run: |
+          python3 -m unittest discover -s tests -p test_iw5_preview_smoke.py -v
+          python3 tools/iw5_preview_smoke.py --fixture build/synthetic.iw5geo
+      - name: Build simulator preview
+        run: |
+          cmake -S . -B build/simulator -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphonesimulator -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY -DKISAK_BUILD_ENGINE=OFF -DBUILD_TESTING=OFF -DKISAK_PREVIEW_SMOKE_TEST=ON -DKISAK_IOS_PREVIEW_MAP="$PWD/build/synthetic.iw5geo"
+          cmake --build build/simulator --config Release --target KisakCOD-iOS -- CODE_SIGNING_ALLOWED=NO
+      - name: Launch and require completed Metal draw
+        run: python3 tools/iw5_preview_smoke.py --app build/simulator/ports/ios/Release-iphonesimulator/KisakCOD-iOS.app --output build/simulator-evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iw5-simulator-render-evidence
+          path: build/simulator-evidence
+          if-no-files-found: warn

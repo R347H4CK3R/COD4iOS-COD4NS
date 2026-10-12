@@ -70,6 +70,9 @@ fragment float4 tex_fragment(TexOut in [[stage_in]],
 
     CFTimeInterval _lastFrame;
     dispatch_semaphore_t _inflight;
+#if KISAK_PREVIEW_SMOKE_TEST
+    BOOL _smokeReported;
+#endif
 }
 - (instancetype)initWithView:(MTKView *)view error:(NSError **)error {
     if(!(self=[super init])) return nil;
@@ -270,8 +273,23 @@ fragment float4 tex_fragment(TexOut in [[stage_in]],
     [command presentDrawable:drawable];
     dispatch_semaphore_t semaphore=_inflight;
     __weak KISMetalRenderer *weakSelf=self;
+#if KISAK_PREVIEW_SMOKE_TEST
+    const BOOL reportFrame=_indexCount>0 && !_smokeReported;
+    const NSUInteger smokeIndexCount=_indexCount;
+    if(reportFrame) _smokeReported=YES;
+#endif
     [command addCompletedHandler:^(id<MTLCommandBuffer> done) {
         dispatch_semaphore_signal(semaphore);
+#if KISAK_PREVIEW_SMOKE_TEST
+        if(reportFrame) {
+            NSDictionary *report=@{@"status":done.status==MTLCommandBufferStatusCompleted?@"completed":@"error",
+                @"index_count":@(smokeIndexCount), @"error":done.error.localizedDescription?:@""};
+            NSURL *documents=[NSFileManager.defaultManager URLForDirectory:NSDocumentDirectory
+                inDomain:NSUserDomainMask appropriateForURL:nil create:YES error:nil];
+            NSData *json=[NSJSONSerialization dataWithJSONObject:report options:0 error:nil];
+            [json writeToURL:[documents URLByAppendingPathComponent:@"iw5-render-smoke.json"] options:NSDataWritingAtomic error:nil];
+        }
+#endif
         if(done.status==MTLCommandBufferStatusError) {
             NSString *message=done.error.localizedDescription?:@"Errore durante il rendering Metal.";
             dispatch_async(dispatch_get_main_queue(),^{

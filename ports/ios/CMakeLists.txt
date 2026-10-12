@@ -150,7 +150,15 @@ add_executable(KisakCOD-iOS MACOSX_BUNDLE
     app/MapViewController.mm
     app/MetalRenderer.mm
 )
-set(KISAK_IOS_PREVIEW_MAP "" CACHE FILEPATH "Optional user-owned .ff/.d3dbsp map for a personal build")
+option(KISAK_PREVIEW_SMOKE_TEST "Record one Metal command completion in simulator test builds" OFF)
+if(KISAK_PREVIEW_SMOKE_TEST)
+    string(TOLOWER "${CMAKE_OSX_SYSROOT}" KISAK_SMOKE_SYSROOT)
+    if(NOT KISAK_SMOKE_SYSROOT MATCHES "iphonesimulator")
+        message(FATAL_ERROR "KISAK_PREVIEW_SMOKE_TEST requires the iPhoneSimulator SDK")
+    endif()
+    target_compile_definitions(KisakCOD-iOS PRIVATE KISAK_PREVIEW_SMOKE_TEST=1)
+endif()
+set(KISAK_IOS_PREVIEW_MAP "" CACHE FILEPATH "Optional user-owned .ff/.d3dbsp/.iw5geo map for a personal build")
 if(KISAK_IOS_PREVIEW_MAP)
     if(NOT EXISTS "${KISAK_IOS_PREVIEW_MAP}")
         message(FATAL_ERROR "KISAK_IOS_PREVIEW_MAP does not exist")

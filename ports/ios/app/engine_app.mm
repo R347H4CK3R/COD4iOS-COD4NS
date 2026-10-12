@@ -296,6 +296,7 @@ static void *KISEngineThreadMain(void *argument)
     KISControllerInput *_controllerInput;
     KISTouchControls *_touchControls;
     CADisplayLink *_displayLink;
+    BOOL _modComboLatched;
 }
 
 - (void)loadView
@@ -314,6 +315,13 @@ static void *KISEngineThreadMain(void *argument)
     _status.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
     _status.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:_status];
+    UIButton *mod=[UIButton buttonWithType:UIButtonTypeSystem];
+    [mod setTitle:@"MOD" forState:UIControlStateNormal];
+    mod.frame=CGRectMake(15, 45, 64, 44);mod.backgroundColor=UIColor.darkGrayColor;
+    mod.tintColor=UIColor.whiteColor;
+    [mod addTarget:self action:@selector(showModMenu) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:mod];
+    [NSTimer scheduledTimerWithTimeInterval:0.10 target:self selector:@selector(checkModCombo) userInfo:nil repeats:YES];
 #ifdef KISAK_MP
     UIButton *mw3Button=[UIButton buttonWithType:UIButtonTypeSystem];
     [mw3Button setTitle:@"MW3 Dome Preview" forState:UIControlStateNormal];
@@ -348,6 +356,27 @@ static void *KISEngineThreadMain(void *argument)
     [self presentViewController:alert animated:YES completion:nil];
 }
 #endif
+- (void)checkModCombo {
+    BOOL pressed=NO;
+    for(GCController *controller in GCController.controllers) {
+        GCExtendedGamepad *pad=controller.extendedGamepad;
+        if(pad && pad.leftShoulder.pressed && pad.rightShoulder.pressed && pad.dpad.up.pressed) {
+            pressed=YES; break;
+        }
+    }
+    if(pressed && !_modComboLatched && !self.presentedViewController)[self showModMenu];
+    _modComboLatched=pressed;
+}
+- (void)showModMenu {
+    UIAlertController *menu=[UIAlertController alertControllerWithTitle:@"COD4 Developer Menu"
+        message:@"On-screen menu enabled" preferredStyle:UIAlertControllerStyleAlert];
+    [menu addAction:[UIAlertAction actionWithTitle:@"Hide touch controls" style:UIAlertActionStyleDefault
+        handler:^(UIAlertAction *a){ (void)a; self->_touchControls.hidden=YES; }]];
+    [menu addAction:[UIAlertAction actionWithTitle:@"Show touch controls" style:UIAlertActionStyleDefault
+        handler:^(UIAlertAction *a){ (void)a; self->_touchControls.hidden=NO; }]];
+    [menu addAction:[UIAlertAction actionWithTitle:@"Close" style:UIAlertActionStyleCancel handler:nil]];
+    [self presentViewController:menu animated:YES completion:nil];
+}
 - (NSString *)documentsPath
 {
     return NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;

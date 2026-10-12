@@ -2250,18 +2250,17 @@ int __cdecl FS_GetModList(char *listbuf, int bufsize)
     snprintf(descPath, ARRAYSIZE(descPath), "%s/%s", fs_homepath->current.string, "mods");
     pFiles = Sys_ListFiles(descPath, 0, 0, &dummy, 1);
     nPotential = Sys_CountFileList(pFiles);
+    Com_Printf(CON_CHANNEL_FILES, "MODS: scanned %s, found %d folders (base=%s)\n",
+        descPath, nPotential, fs_basepath->current.string);
     for (i = 0; i < nPotential; ++i)
     {
         name = pFiles[i];
         nLen = strlen(name) + 1;
-        v14 = name;
-        v13 = descPath;
-        do
-        {
-            v12 = *v14;
-            *v13++ = *v14++;
-        } while (v12);
-        I_strncat(descPath, 256, "/description.txt");
+        // Resolve descriptions under the actual mods directory, not at the
+        // home root. Retain the scanned base path across iterations.
+        char modDescriptionPath[256];
+        Com_sprintf(modDescriptionPath, sizeof(modDescriptionPath), "mods/%s/description.txt", name);
+        I_strncpyz(descPath, modDescriptionPath, sizeof(descPath));
         if (FS_SV_FOpenFileRead(descPath, &descHandle) > 0 && descHandle)
         {
             file = FS_FileForHandle(descHandle);

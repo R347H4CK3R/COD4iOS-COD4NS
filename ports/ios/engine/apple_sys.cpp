@@ -414,6 +414,17 @@ void KisakApple_ModCommand(const char *command) {
     static const char * const allowed[]={"god","demigod","noclip","ufo","notarget","give ammo","give all"};
     bool valid=false;
     for(const char *candidate:allowed)if(std::strcmp(command,candidate)==0){valid=true;break;}
+    if(!valid && std::strncmp(command,"give ",5)==0) {
+        static const char * const items[]={
+            "m4_mp","ak47_mp","m16_mp","g36c_mp","g3_mp",
+            "mp5_mp","ak74u_mp","p90_mp","skorpion_mp","uzi_mp",
+            "m40a3_mp","barrett_mp","dragunov_mp","remington700_mp",
+            "winchester1200_mp","m1014_mp","beretta_mp","usp_mp","deserteagle_mp",
+            "frag_grenade_mp","claymore_mp","c4_mp","flash_grenade_mp",
+            "concussion_grenade_mp","smoke_grenade_mp"
+        };
+        for(const char *item:items)if(std::strcmp(command+5,item)==0){valid=true;break;}
+    }
     if(!valid)return;
     std::lock_guard<std::mutex> guard(g_touchLock);
     if(g_modCommands.size()<32)g_modCommands.emplace_back(command);

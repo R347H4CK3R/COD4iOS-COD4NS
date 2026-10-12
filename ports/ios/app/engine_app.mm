@@ -330,7 +330,7 @@ static void *KISEngineThreadMain(void *argument)
     [toggle addTarget:self action:@selector(toggleMod) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:toggle];
     _modToggle=toggle;
-    _modPanel=[[UIView alloc] initWithFrame:CGRectMake(86,38,300,310)];
+    _modPanel=[[UIView alloc] initWithFrame:CGRectMake(86,20,300,410)];
     _modPanel.backgroundColor=[UIColor colorWithRed:0.05 green:0.07 blue:0.12 alpha:0.97];
     _modPanel.layer.borderWidth=1;_modPanel.layer.borderColor=UIColor.cyanColor.CGColor;
     _modPanel.layer.cornerRadius=9;_modPanel.hidden=YES;
@@ -355,7 +355,7 @@ static void *KISEngineThreadMain(void *argument)
         [b setTitle:[@"  > " stringByAppendingString:entries[i]] forState:UIControlStateNormal];
         b.contentHorizontalAlignment=UIControlContentHorizontalAlignmentLeft;
         b.tintColor=UIColor.whiteColor;b.backgroundColor=[UIColor colorWithWhite:0.17 alpha:0.95];
-        b.frame=CGRectMake(12,48+40*i,276,35);b.tag=i;
+        b.frame=CGRectMake(12,42+31*i,276,28);b.tag=i;
         [b addTarget:self action:@selector(modSelect:) forControlEvents:UIControlEventTouchUpInside];
         [_modPanel addSubview:b];
     }
@@ -371,15 +371,50 @@ static void *KISEngineThreadMain(void *argument)
     [self presentViewController:a animated:YES completion:nil];
 }
 - (void)modSelect:(UIButton *)sender {
-    NSArray *names=@[@"Player",@"Weapons",@"Game",@"Visuals",@"Mods",@"Close"];
+    NSArray *names=@[@"Player",@"Weapons",@"Perks",@"Lethals",@"Tacticals",@"Killstreaks",@"Game",@"Visuals",@"Mods",@"Close"];
     NSString *choice=[sender currentTitle];
+    if([choice hasPrefix:@"  > "])choice=[choice substringFromIndex:4];
     if([choice containsString:@"Back"]){[self modCategory:@"COD4 // MOD MENU" entries:names];return;}
     if([choice containsString:@"Close"]){[self toggleMod];return;}
     if([choice containsString:@"Player"]){
        [self modCategory:@"PLAYER // PRIVATE CHEATS" entries:@[@"God Mode",@"Demigod",@"Noclip",@"UFO",@"No Target",@"Back"]];return;
     }
     if([choice containsString:@"Weapons"]){
-       [self modCategory:@"WEAPONS // PRIVATE CHEATS" entries:@[@"Refill Ammo",@"Give All Weapons",@"Back"]];return;
+       [self modCategory:@"WEAPONS" entries:@[@"Assault Rifles",@"SMGs",@"Snipers",@"Shotguns",@"Pistols",@"Refill Ammo",@"Back"]];return;
+    }
+    NSDictionary<NSString *,NSArray<NSString *> *> *categories=@{
+      @"Assault Rifles":@[@"M4 Carbine",@"AK-47",@"M16A4",@"G36C",@"G3"],
+      @"SMGs":@[@"MP5",@"AK-74u",@"P90",@"Skorpion",@"Mini-Uzi"],
+      @"Snipers":@[@"M40A3",@"Barrett .50cal",@"Dragunov",@"R700"],
+      @"Shotguns":@[@"W1200",@"M1014"],@"Pistols":@[@"M9",@"USP .45",@"Desert Eagle"],
+      @"Perks":@[@"Stopping Power",@"Juggernaut",@"Sleight of Hand",@"Double Tap",@"Steady Aim"],
+      @"Lethals":@[@"Frag Grenade",@"Claymore",@"C4"],
+      @"Tacticals":@[@"Flashbang",@"Stun Grenade",@"Smoke Grenade"],
+      @"Killstreaks":@[@"3 Kills: UAV",@"5 Kills: Airstrike",@"7 Kills: Attack Helicopter"]
+    };
+    if(categories[choice]){
+       NSMutableArray *rows=[categories[choice] mutableCopy];[rows addObject:@"Back"];
+       [self modCategory:choice entries:rows];return;
+    }
+    NSDictionary<NSString *,NSString *> *weaponNames=@{
+      @"M4 Carbine":@"m4_mp",@"AK-47":@"ak47_mp",@"M16A4":@"m16_mp",@"G36C":@"g36c_mp",@"G3":@"g3_mp",
+      @"MP5":@"mp5_mp",@"AK-74u":@"ak74u_mp",@"P90":@"p90_mp",@"Skorpion":@"skorpion_mp",@"Mini-Uzi":@"uzi_mp",
+      @"M40A3":@"m40a3_mp",@"Barrett .50cal":@"barrett_mp",@"Dragunov":@"dragunov_mp",@"R700":@"remington700_mp",
+      @"W1200":@"winchester1200_mp",@"M1014":@"m1014_mp",@"M9":@"beretta_mp",@"USP .45":@"usp_mp",@"Desert Eagle":@"deserteagle_mp",
+      @"Frag Grenade":@"frag_grenade_mp",@"Claymore":@"claymore_mp",@"C4":@"c4_mp",
+      @"Flashbang":@"flash_grenade_mp",@"Stun Grenade":@"concussion_grenade_mp",@"Smoke Grenade":@"smoke_grenade_mp"
+    };
+    for(NSString *name in weaponNames)if([choice containsString:name]) {
+        NSString *item=weaponNames[name];KisakApple_ModCommand([[@"give " stringByAppendingString:item] UTF8String]);
+        [self modMessage:@"Item request sent to local COD4 server (sv_cheats 1 required)."];
+        return;
+    }
+    NSArray *perks=categories[@"Perks"], *streaks=categories[@"Killstreaks"];
+    for(NSString *name in [perks arrayByAddingObjectsFromArray:streaks])if([choice containsString:name]) {
+        [NSUserDefaults.standardUserDefaults setObject:name forKey:
+            [perks containsObject:name]?@"COD4MenuSelectedPerk":@"COD4MenuSelectedStreak"];
+        [self modMessage:@"Selection saved as a preset; COD4 class/killstreak granting is not yet linked to this menu."];
+        return;
     }
     NSDictionary<NSString *,NSString *> *commands=@{
        @"God Mode":@"god", @"Demigod":@"demigod", @"Noclip":@"noclip",

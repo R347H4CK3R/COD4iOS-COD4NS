@@ -1729,7 +1729,6 @@ void __cdecl SV_ExecuteClientCommand(client_t *cl, char *s, int clientOK, int fr
 
 gentity_s *__cdecl SV_AddTestClient()
 {
-    netadr_t v1; // [esp-14h] [ebp-458h]
     client_t *client; // [esp+0h] [ebp-444h]
     client_t *clienta; // [esp+0h] [ebp-444h]
     usercmd_s nullcmd; // [esp+4h] [ebp-440h] BYREF
@@ -1757,10 +1756,9 @@ gentity_s *__cdecl SV_AddTestClient()
     memset(a.ipx, 0, sizeof(a.ipx));
     a.type = NA_BOT;
     a.port = botport++;
-    *(_QWORD *)&v1.type = 0;
-    *(uint32_t *)&v1.port = a.port;
-    *(_QWORD *)&v1.ipx[2] = 0;
-    SV_DirectConnect(v1);
+    // Pass the fully initialized bot address, not a hand-packed temporary
+    // whose layout differs on arm64 and can corrupt the connection address.
+    SV_DirectConnect(a);
     SV_Cmd_EndTokenizedString();
     i = 0;
     for (clienta = svs.clients;
@@ -1771,7 +1769,11 @@ gentity_s *__cdecl SV_AddTestClient()
         ++i;
     }
     if (i == sv_maxclients->current.integer)
+    {
+        Com_PrintWarning(CON_CHANNEL_SERVER, "SV_AddTestClient: bot connect did not create a client\n");
         return 0;
+    }
+    Com_Printf(CON_CHANNEL_SERVER, "SV_AddTestClient: bot assigned slot %d\n", i);
     clienta->bIsTestClient = 1;
     SV_SendClientGameState(clienta);
     memset(&nullcmd, 0, sizeof(nullcmd));

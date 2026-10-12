@@ -32,6 +32,7 @@ void KisakApple_TouchEvent(int phase, float x, float y);
 void KisakApple_TextInput(const char *utf8);
 void KisakApple_TextBackspace();
 void KisakApple_TextReturn();
+void KisakApple_ModCommand(const char *command);
 int KisakApple_TextInputActive();
 
 @interface KISControllerInput : NSObject
@@ -374,9 +375,22 @@ static void *KISEngineThreadMain(void *argument)
     NSString *choice=[sender currentTitle];
     if([choice containsString:@"Back"]){[self modCategory:@"COD4 // MOD MENU" entries:names];return;}
     if([choice containsString:@"Close"]){[self toggleMod];return;}
-    if([choice containsString:@"Player"] || [choice containsString:@"Weapons"])
-       {[self modCategory:[choice stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet]
-          entries:@[@"Offline gameplay hooks: not installed",@"Back"]];return;}
+    if([choice containsString:@"Player"]){
+       [self modCategory:@"PLAYER // PRIVATE CHEATS" entries:@[@"God Mode",@"Demigod",@"Noclip",@"UFO",@"No Target",@"Back"]];return;
+    }
+    if([choice containsString:@"Weapons"]){
+       [self modCategory:@"WEAPONS // PRIVATE CHEATS" entries:@[@"Refill Ammo",@"Give All Weapons",@"Back"]];return;
+    }
+    NSDictionary<NSString *,NSString *> *commands=@{
+       @"God Mode":@"god", @"Demigod":@"demigod", @"Noclip":@"noclip",
+       @"UFO":@"ufo", @"No Target":@"notarget",
+       @"Refill Ammo":@"give ammo", @"Give All Weapons":@"give all"
+    };
+    for(NSString *name in commands)if([choice containsString:name]) {
+        KisakApple_ModCommand(commands[name].UTF8String);
+        [self modMessage:@"Command queued. Available only when local server cheats are enabled (sv_cheats 1)."];
+        return;
+    }
     if([choice containsString:@"Game"]){[self modCategory:@"GAME" entries:@[@"Mods",@"Back"]];return;}
     if([choice containsString:@"Visuals"]){[self modCategory:@"VISUALS" entries:@[@"Toggle touch controls",@"Back"]];return;}
     if([choice containsString:@"Toggle touch controls"]){_touchControls.hidden=!_touchControls.hidden;return;}

@@ -364,6 +364,7 @@ struct KisakTouch
 };
 std::mutex g_touchLock;
 std::vector<KisakTouch> g_touches;
+std::vector<std::string> g_modCommands;
 int g_cursorX = 0;
 int g_cursorY = 0;
 bool g_haveCursor = false;
@@ -407,8 +408,27 @@ void KisakApple_TouchEvent(int phase, float x, float y)
     g_touches.push_back(KisakTouch{phase, static_cast<int>(x), static_cast<int>(y)});
 }
 
+void KisakApple_ModCommand(const char *command) {
+    if(!command)return;
+    static const char * const allowed[]={"god","demigod","noclip","ufo","notarget","give ammo","give all"};
+    bool valid=false;
+    for(const char *candidate:allowed)if(std::strcmp(command,candidate)==0){valid=true;break;}
+    if(!valid)return;
+    std::lock_guard<std::mutex> guard(g_touchLock);
+    if(g_modCommands.size()<32)g_modCommands.emplace_back(command);
+}
 void IN_Frame()
 {
+    std::vector<std::string> modCommands;
+    {
+        std::lock_guard<std::mutex> guard(g_touchLock);
+        modCommands.swap(g_modCommands);
+    }
+    for(const auto &cmd:modCommands) {
+        // CheatsOk in the game server enforces sv_cheats, so official
+        // multiplayer sessions cannot activate these commands.
+        Cbuf_AddText(0,(cmd+"\n").c_str());
+    }
     KisakApple_ControllerFrame();
     std::vector<KisakTouch> touches;
     {

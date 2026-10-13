@@ -1050,8 +1050,30 @@ void __cdecl SV_BotUserMove(client_t *cl)
         nullcmd.weapon = SV_GameClientNum(cl - svs.clients)->weapon;
         if (!G_GetClientArchiveTime(cl - svs.clients))
         {
-            if (KISAK_RANDOM() < 0.5 && sv_botsPressAttackBtn->current.enabled)
-                nullcmd.buttons |= BUTTON_ATTACK;
+            // Do not fire randomly: only consider active opposing players.
+            // Precise aiming and line-of-sight must be added before firing.
+            bool enemyPresent = false;
+            const int botIndex = static_cast<int>(cl - svs.clients);
+            const team_t botTeam = g_entities[botIndex].client
+                ? g_entities[botIndex].client->sess.cs.team : TEAM_SPECTATOR;
+            if (botTeam == TEAM_AXIS || botTeam == TEAM_ALLIES)
+            {
+                for (int candidate = 0; candidate < sv_maxclients->current.integer; ++candidate)
+                {
+                    if (candidate == botIndex || svs.clients[candidate].header.state != CS_ACTIVE)
+                        continue;
+                    const gentity_s *target = &g_entities[candidate];
+                    if (!target->client || target->client->sess.sessionState != SESS_STATE_PLAYING)
+                        continue;
+                    const team_t targetTeam = target->client->sess.cs.team;
+                    if (targetTeam == TEAM_SPECTATOR || targetTeam == botTeam)
+                        continue;
+                    enemyPresent = true;
+                    break;
+                }
+            }
+            (void)enemyPresent;
+            // Hold fire until the bot controller has valid LOS and aim.
             if (KISAK_RANDOM() < 0.5)
                 nullcmd.buttons |= BUTTON_USE | BUTTON_USE_RELOAD;
             if (KISAK_RANDOM() >= 0.3300000131130219)

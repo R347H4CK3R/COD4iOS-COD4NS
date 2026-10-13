@@ -1177,6 +1177,7 @@ void __cdecl SV_PreFrame()
 
 #ifdef __APPLE__
 extern "C" int KisakApple_TakeNativeTestBotRequest();
+extern "C" int KisakApple_TakeNativeBotRemovalRequest();
 extern void IOS_BotServiceTeamJoins();
 #endif
 
@@ -1202,6 +1203,19 @@ int __cdecl SV_Frame(int msec)
 #ifdef __APPLE__
             // Native touch-to-server test client path; independent of the GSC mod.
             // Requests are consumed on the server frame, not the UI thread.
+            int iosRemoveRequests = KisakApple_TakeNativeBotRemovalRequest();
+            // Disconnect only synthetic clients, never the human player.
+            for (int i = sv_maxclients->current.integer - 1; i >= 0 && iosRemoveRequests > 0; --i)
+            {
+                client_t *candidate = &svs.clients[i];
+                if (candidate->bIsTestClient && candidate->header.state >= CS_CONNECTED &&
+                    candidate->header.state != CS_ZOMBIE)
+                {
+                    SV_DropClient(candidate, "EXE_DISCONNECTED", true);
+                    --iosRemoveRequests;
+                    Com_Printf(CON_CHANNEL_SERVER, "ios_native_bot: removed test client %d\\n", i);
+                }
+            }
             if (KisakApple_TakeNativeTestBotRequest())
             {
                 if (SV_Loaded() && com_dedicated->current.integer == 0)

@@ -7,6 +7,7 @@
 
 extern void KisakApple_ModCommand(const char *command);
 extern "C" void KisakApple_RequestNativeTestBot();
+extern "C" void KisakApple_RequestNativeBotRemoval(int count);
 
 @implementation KISTouchControls {
     kisak::touch::State _input;
@@ -148,6 +149,7 @@ extern "C" void KisakApple_RequestNativeTestBot();
 }
 - (void)decreaseBotCount:(id)sender {
     (void)sender;
+    if (_botCount > 0) KisakApple_RequestNativeBotRemoval(1);
     _botCount=MAX(0,_botCount-1);
     [self applyBotCount];
 }
@@ -162,6 +164,7 @@ extern "C" void KisakApple_RequestNativeTestBot();
 }
 - (void)resetBotCount:(id)sender {
     (void)sender;
+    KisakApple_RequestNativeBotRemoval(64);
     _botCount=0;
     [self applyBotCount];
 }

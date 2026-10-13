@@ -5,12 +5,16 @@
 #import <QuartzCore/QuartzCore.h>
 #include "../input/TouchControls.h"
 
+extern void KisakApple_ModCommand(const char *command);
+
 @implementation KISTouchControls {
     kisak::touch::State _input;
     NSMutableArray<UIView *> *_shells;
     UIView *_knob;
     BOOL _available;
     int _context;
+    UIButton *_privateCheatsButton;
+    BOOL _privateCheats;
 }
 - (instancetype)initWithFrame:(CGRect)frame {
     if (!(self=[super initWithFrame:frame])) return nil;
@@ -43,6 +47,16 @@
         }
         [_shells addObject:shell];[self addSubview:shell];
     }
+    _privateCheatsButton=[UIButton buttonWithType:UIButtonTypeSystem];
+    _privateCheatsButton.backgroundColor=[UIColor colorWithWhite:0.08 alpha:0.84];
+    _privateCheatsButton.layer.cornerRadius=9;
+    _privateCheatsButton.layer.borderColor=[UIColor colorWithWhite:1 alpha:0.42].CGColor;
+    _privateCheatsButton.layer.borderWidth=1;
+    _privateCheatsButton.titleLabel.font=[UIFont boldSystemFontOfSize:13];
+    [_privateCheatsButton setTitle:@"Private Cheats: OFF" forState:UIControlStateNormal];
+    [_privateCheatsButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    [_privateCheatsButton addTarget:self action:@selector(togglePrivateCheats:) forControlEvents:UIControlEventTouchUpInside];
+    [self addSubview:_privateCheatsButton];
     _knob=[UIView new];_knob.userInteractionEnabled=NO;
     _knob.backgroundColor=[UIColor colorWithWhite:1 alpha:.18];
     _knob.layer.borderWidth=1.5;
@@ -68,6 +82,7 @@
                 [shell viewWithTag:101+n].frame=CGRectMake(centers[n].x-size/2,centers[n].y-size/2,size,size);
         }
     }
+    _privateCheatsButton.frame=CGRectMake(CGRectGetMaxX(safe)-188, CGRectGetMinY(safe)+4, 184, 37);
     [self refreshVisuals];
     if(self.inputChanged)self.inputChanged();
 }
@@ -76,7 +91,17 @@
     _available=available;_context=context;
     _input.SetContext(available && context!=2,context==1);
     self.hidden=!available || context==2;
+    _privateCheatsButton.hidden=!available || context!=0;
     [self refreshVisuals];
+}
+- (void)togglePrivateCheats:(id)sender {
+    (void)sender;
+    // This UI preference is only consulted by UI_StartServer for a local
+    // listen server; joining a remote host never applies it.
+    _privateCheats=!_privateCheats;
+    KisakApple_ModCommand(_privateCheats ? "set ui_privateCheats 1" : "set ui_privateCheats 0");
+    [_privateCheatsButton setTitle:(_privateCheats ? @"Private Cheats: ON" : @"Private Cheats: OFF")
+                        forState:UIControlStateNormal];
 }
 - (void)refreshVisuals {
     const double now=CACurrentMediaTime();

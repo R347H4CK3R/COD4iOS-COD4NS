@@ -411,7 +411,7 @@ void KisakApple_TouchEvent(int phase, float x, float y)
 
 void KisakApple_ModCommand(const char *command) {
     if(!command)return;
-    static const char * const allowed[]={"sv_cheats 1","god","demigod","noclip","ufo","notarget","give ammo","give all"};
+    static const char * const allowed[]={"sv_cheats 1","god","demigod","noclip","ufo","notarget","give ammo","give all","ios_testbot"};
     bool valid=false;
     for(const char *candidate:allowed)if(std::strcmp(command,candidate)==0){valid=true;break;}
     if(!valid && std::strncmp(command,"give ",5)==0) {

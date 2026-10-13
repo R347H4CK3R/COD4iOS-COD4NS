@@ -288,12 +288,34 @@ void __cdecl SV_ScriptDebugger_f()
     }
 }
 
+#if defined(__APPLE__)
+// Diagnostic-only: creates one engine test client on a local listen server.
+// Movement and combat AI are separate follow-up work.
+static cmd_function_s ios_testbot_cmd;
+static cmd_function_s ios_testbot_server_cmd;
+static void IOS_AddOneTestBot_f()
+{
+    if (!com_sv_running || !com_sv_running->current.enabled ||
+        !SV_Loaded() || (com_dedicated && com_dedicated->current.integer != 0))
+    {
+        Com_PrintWarning(CON_CHANNEL_SERVER, "ios_testbot: requires an active local listen server\\n");
+        return;
+    }
+    if (!SV_AddTestClient())
+        Com_PrintWarning(CON_CHANNEL_SERVER, "ios_testbot: no available test-client slot\\n");
+}
+#endif
+
 void __cdecl SV_AddOperatorCommands()
 {
     static int initialized_0 = 0;
     if (!initialized_0)
     {
         initialized_0 = 1;
+#if defined(__APPLE__)
+        Cmd_AddCommandInternal("ios_testbot", Cbuf_AddServerText_f, &ios_testbot_cmd);
+        Cmd_AddServerCommandInternal("ios_testbot", IOS_AddOneTestBot_f, &ios_testbot_server_cmd);
+#endif
         Cmd_AddCommandInternal("heartbeat", Cbuf_AddServerText_f, &SV_Heartbeat_f_VAR);
         Cmd_AddServerCommandInternal("heartbeat", SV_Heartbeat_f, &SV_Heartbeat_f_VAR_SERVER);
         Cmd_AddCommandInternal("onlykick", Cbuf_AddServerText_f, &SV_Drop_f_VAR);

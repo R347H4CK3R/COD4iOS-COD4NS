@@ -407,7 +407,7 @@ static void *KISEngineThreadMain(void *argument)
     };
     for(NSString *name in weaponNames)if([choice containsString:name]) {
         NSString *item=weaponNames[name];KisakApple_ModCommand("sv_cheats 1");KisakApple_ModCommand([[@"give " stringByAppendingString:item] UTF8String]);
-        [self modMessage:@"Item request sent to local COD4 server (sv_cheats 1 required)."];
+        // The cheat command is queued; no misleading confirmation alert.
         return;
     }
     NSArray *perks=categories[@"Perks"], *streaks=categories[@"Killstreaks"];
@@ -425,7 +425,7 @@ static void *KISEngineThreadMain(void *argument)
     for(NSString *name in commands)if([choice containsString:name]) {
         KisakApple_ModCommand("sv_cheats 1");
         KisakApple_ModCommand(commands[name].UTF8String);
-        [self modMessage:@"Private cheat requested. This requires an offline local server."];
+        // Do not show a success popup until server-side execution can be confirmed.
         return;
     }
     if([choice containsString:@"Game"]){[self modCategory:@"GAME" entries:@[@"Back"]];return;}

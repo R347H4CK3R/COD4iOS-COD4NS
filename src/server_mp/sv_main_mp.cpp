@@ -1177,6 +1177,7 @@ void __cdecl SV_PreFrame()
 
 #ifdef __APPLE__
 extern "C" int KisakApple_TakeNativeTestBotRequest();
+extern void IOS_BotServiceTeamJoins();
 #endif
 
 int __cdecl SV_Frame(int msec)
@@ -1219,7 +1220,12 @@ int __cdecl SV_Frame(int msec)
             if (SV_CheckPaused())
                 SV_WaitServer();
             else
+            {
                 SV_FrameInternal(msec);
+#ifdef __APPLE__
+                IOS_BotServiceTeamJoins();
+#endif
+            }
         }
         return msec;
     }

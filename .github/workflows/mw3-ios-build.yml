@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - 'ports/ios/app/touch_controls.mm'
       - 'ports/ios/app/launcher.mm'
       - 'ports/ios/app/engine_app.mm'
       - 'ports/ios/engine/apple_sys.cpp'

@@ -1226,6 +1226,7 @@ int __cdecl SV_Frame(int msec)
             // Native touch-to-server test client path; independent of the GSC mod.
             // Requests are consumed on the server frame, not the UI thread.
             static int iosPendingBotAdds = 0;
+            static int iosNextBotJoinTime = 0;
             int iosRemoveRequests = KisakApple_TakeNativeBotRemovalRequest();
             const int cancelPending = iosRemoveRequests < iosPendingBotAdds ? iosRemoveRequests : iosPendingBotAdds;
             iosPendingBotAdds -= cancelPending;
@@ -1246,9 +1247,10 @@ int __cdecl SV_Frame(int msec)
             const int incomingBotAdds = KisakApple_TakeNativeTestBotRequest();
             iosPendingBotAdds = (iosPendingBotAdds + incomingBotAdds > 18)
                 ? 18 : iosPendingBotAdds + incomingBotAdds;
-            if (iosPendingBotAdds > 0)
+            if (iosPendingBotAdds > 0 && svs.time >= iosNextBotJoinTime)
             {
                 --iosPendingBotAdds;
+                iosNextBotJoinTime = svs.time + 400;
             {
                 if (SV_Loaded() && com_dedicated->current.integer == 0)
                 {

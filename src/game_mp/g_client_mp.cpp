@@ -317,6 +317,32 @@ void __cdecl ClientClearFields(gclient_s *client)
     client->useHoldEntity.setEnt(NULL);
 }
 
+#ifdef __APPLE__
+static int iosBotJoinDeadline[64] = {};
+static bool iosBotJoinPending[64] = {};
+static void IOS_BotQueueTeamJoin(int clientNum)
+{
+    if (clientNum < 0 || clientNum >= 64) return;
+    iosBotJoinDeadline[clientNum] = svs.time + 1500;
+    iosBotJoinPending[clientNum] = true;
+}
+void IOS_BotServiceTeamJoins()
+{
+    if (!Scr_IsSystemActive() || !SV_Loaded()) return;
+    for (int i = 0; i < sv_maxclients->current.integer && i < 64; ++i)
+    {
+        if (!iosBotJoinPending[i] || svs.time < iosBotJoinDeadline[i]) continue;
+        iosBotJoinPending[i] = false;
+        if (svs.clients[i].header.state < CS_ACTIVE ||
+            !svs.clients[i].bIsTestClient || !g_entities[i].client) continue;
+        Scr_AddString("autoassign");
+        Scr_AddString("team_marinesopfor");
+        Scr_Notify(&g_entities[i], scr_const.menuresponse, 2);
+        Com_Printf(CON_CHANNEL_SERVER, "ios_native_bot: deferred autoassign sent for %d\\n", i);
+    }
+}
+#endif
+
 void __cdecl ClientBegin(int32_t clientNum)
 {
     gclient_s *client; // [esp+0h] [ebp-4h]
@@ -327,15 +353,10 @@ void __cdecl ClientBegin(int32_t clientNum)
     CalculateRanks();
     Scr_Notify(&g_entities[clientNum], scr_const.begin, 0);
 #ifdef __APPLE__
-    // ModWarfare owns team selection. Send its existing menu response instead
-    // of modifying sessionTeam, which bypasses class and spawn initialization.
-    if (svs.clients[clientNum].bIsTestClient && Scr_IsSystemActive())
-    {
-        Scr_AddString("autoassign");
-        Scr_AddString("team_marinesopfor");
-        Scr_Notify(&g_entities[clientNum], scr_const.menuresponse, 2);
-        Com_Printf(CON_CHANNEL_SERVER, "ios_native_bot: requested ModWarfare autoassign for %d\\n", clientNum);
-    }
+    // Defer menu notification: ModWarfare registers its onMenuResponse
+    // listener asynchronously after the connecting event.
+    if (svs.clients[clientNum].bIsTestClient)
+        IOS_BotQueueTeamJoin(clientNum);
 #endif
 }
 

@@ -1081,16 +1081,20 @@ void __cdecl SV_BuildClientSnapshot(client_t *client)
                     for (i = 0; i < CachedSnapshot->num_clients; ++i)
                     {
                         v20 = &svs.cachedSnapshotClients[(i + CachedSnapshot->first_client) % 4096];
+                        // Cached snapshots can contain stale or repeated client entries
+                        // around death/respawn and bot disconnect/reconnect transitions.
+                        // Never serialize duplicate or out-of-range client indices.
+                        const int cachedClientIndex = v20->cs.clientIndex;
+                        if (cachedClientIndex < 0 ||
+                            cachedClientIndex >= sv_maxclients->current.integer ||
+                            cachedClientIndex >= (int)(sizeof(v12) / sizeof(v12[0])) ||
+                            v12[cachedClientIndex])
+                        {
+                            continue;
+                        }
                         v9 = &svs.snapshotClients[svs.nextSnapshotClients % svs.numSnapshotClients];
                         memcpy(v9, &v20->cs, sizeof(clientState_s));
-                        if (v12[v9->clientIndex])
-                            MyAssertHandler(
-                                ".\\server_mp\\sv_snapshot_mp.cpp",
-                                1837,
-                                0,
-                                "%s",
-                                "!clientIndex[clientState->clientIndex]");
-                        v12[v9->clientIndex] = 1;
+                        v12[cachedClientIndex] = 1;
                         if (++svs.nextSnapshotClients >= 2147483646)
                             Com_Error(ERR_FATAL, "svs.nextSnapshotClients wrapped");
                         if (++v5->num_clients + v5->first_client != svs.nextSnapshotClients)
@@ -1108,10 +1112,13 @@ void __cdecl SV_BuildClientSnapshot(client_t *client)
                     for (i = 0; i < eNums.numSnapshotEntities; ++i)
                     {
                         v15 = SV_GentityNum(eNums.snapshotEntities[i]);
+                        // Increment once per entity; the previous expression advanced
+                        // the ring index twice and could corrupt snapshot accounting.
                         memcpy(
-                            &svs.snapshotEntities[svs.nextSnapshotEntities++ % svs.numSnapshotEntities],
+                            &svs.snapshotEntities[svs.nextSnapshotEntities % svs.numSnapshotEntities],
                             v15,
-                            sizeof(svs.snapshotEntities[svs.nextSnapshotEntities++ % svs.numSnapshotEntities]));
+                            sizeof(entityState_s));
+                        ++svs.nextSnapshotEntities;
                         if (svs.nextSnapshotEntities >= 2147483646)
                             Com_Error(ERR_FATAL, "svs.nextSnapshotEntities wrapped");
                         ++v5->num_entities;
@@ -1125,16 +1132,12 @@ void __cdecl SV_BuildClientSnapshot(client_t *client)
                             v9 = &svs.snapshotClients[svs.nextSnapshotClients % svs.numSnapshotClients];
                             ClientState = G_GetClientState(i);
                             memcpy(v9, ClientState, sizeof(clientState_s));
-                            if (v9->clientIndex == i)
+                            if (v9->clientIndex == i &&
+                                i >= 0 &&
+                                i < (int)(sizeof(v12) / sizeof(v12[0])) &&
+                                !v12[i])
                             {
-                                if (v12[v9->clientIndex])
-                                    MyAssertHandler(
-                                        ".\\server_mp\\sv_snapshot_mp.cpp",
-                                        1784,
-                                        0,
-                                        "%s",
-                                        "!clientIndex[clientState->clientIndex]");
-                                v12[v9->clientIndex] = 1;
+                                v12[i] = 1;
                                 if (++svs.nextSnapshotClients >= 2147483646)
                                     Com_Error(ERR_FATAL, "svs.nextSnapshotClients wrapped");
                                 if (++v5->num_clients + v5->first_client != svs.nextSnapshotClients)

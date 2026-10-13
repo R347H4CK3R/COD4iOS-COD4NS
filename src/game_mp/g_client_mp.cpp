@@ -326,6 +326,17 @@ void __cdecl ClientBegin(int32_t clientNum)
     client->ps.pm_type = PM_SPECTATOR;
     CalculateRanks();
     Scr_Notify(&g_entities[clientNum], scr_const.begin, 0);
+#ifdef __APPLE__
+    // ModWarfare owns team selection. Send its existing menu response instead
+    // of modifying sessionTeam, which bypasses class and spawn initialization.
+    if (svs.clients[clientNum].bIsTestClient && Scr_IsSystemActive())
+    {
+        Scr_AddString("autoassign");
+        Scr_AddString("team_marinesopfor");
+        Scr_Notify(&g_entities[clientNum], scr_const.menuresponse, 2);
+        Com_Printf(CON_CHANNEL_SERVER, "ios_native_bot: requested ModWarfare autoassign for %d\\n", clientNum);
+    }
+#endif
 }
 
 void __cdecl ClientSpawn(gentity_s *ent, const float *spawn_origin, const float *spawn_angles)

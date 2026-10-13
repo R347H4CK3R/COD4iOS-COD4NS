@@ -13,6 +13,7 @@ on:
       - 'src/server_mp/sv_client_mp.cpp'
       - 'src/server_mp/sv_ccmds_mp.cpp'
       - 'src/server_mp/sv_main_mp.cpp'
+      - 'src/game_mp/g_client_mp.cpp'
       - 'src/server_mp/sv_archive_mp.cpp'
       - 'src/qcommon/sv_msg_write_mp.cpp'
       - 'ports/ios/core/mw3_*'

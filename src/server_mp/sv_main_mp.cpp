@@ -1216,7 +1216,8 @@ int __cdecl SV_Frame(int msec)
                     Com_Printf(CON_CHANNEL_SERVER, "ios_native_bot: removed test client %d\\n", i);
                 }
             }
-            if (KisakApple_TakeNativeTestBotRequest())
+            const int iosBotAddRequests = KisakApple_TakeNativeTestBotRequest();
+            for (int request = 0; request < iosBotAddRequests; ++request)
             {
                 if (SV_Loaded() && com_dedicated->current.integer == 0)
                 {

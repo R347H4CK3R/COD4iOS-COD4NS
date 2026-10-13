@@ -1203,7 +1203,11 @@ int __cdecl SV_Frame(int msec)
 #ifdef __APPLE__
             // Native touch-to-server test client path; independent of the GSC mod.
             // Requests are consumed on the server frame, not the UI thread.
+            static int iosPendingBotAdds = 0;
             int iosRemoveRequests = KisakApple_TakeNativeBotRemovalRequest();
+            const int cancelPending = iosRemoveRequests < iosPendingBotAdds ? iosRemoveRequests : iosPendingBotAdds;
+            iosPendingBotAdds -= cancelPending;
+            iosRemoveRequests -= cancelPending;
             // Disconnect only synthetic clients, never the human player.
             for (int i = sv_maxclients->current.integer - 1; i >= 0 && iosRemoveRequests > 0; --i)
             {
@@ -1217,7 +1221,6 @@ int __cdecl SV_Frame(int msec)
                 }
             }
             // Serialize bot joins across server frames to avoid snapshot bursts.
-            static int iosPendingBotAdds = 0;
             const int incomingBotAdds = KisakApple_TakeNativeTestBotRequest();
             iosPendingBotAdds = (iosPendingBotAdds + incomingBotAdds > 18)
                 ? 18 : iosPendingBotAdds + incomingBotAdds;

@@ -15,6 +15,10 @@ extern void KisakApple_ModCommand(const char *command);
     int _context;
     UIButton *_privateCheatsButton;
     BOOL _privateCheats;
+    UIButton *_botMinusButton;
+    UIButton *_botCountButton;
+    UIButton *_botPlusButton;
+    int _botCount;
 }
 - (instancetype)initWithFrame:(CGRect)frame {
     if (!(self=[super initWithFrame:frame])) return nil;
@@ -57,6 +61,26 @@ extern void KisakApple_ModCommand(const char *command);
     [_privateCheatsButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
     [_privateCheatsButton addTarget:self action:@selector(togglePrivateCheats:) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:_privateCheatsButton];
+    _botCount=0;
+    _botMinusButton=[UIButton buttonWithType:UIButtonTypeSystem];
+    _botCountButton=[UIButton buttonWithType:UIButtonTypeSystem];
+    _botPlusButton=[UIButton buttonWithType:UIButtonTypeSystem];
+    NSArray<UIButton *> *botButtons=@[_botMinusButton,_botCountButton,_botPlusButton];
+    NSArray<NSString *> *botLabels=@[@"Bots −",@"Bots: 0",@"Bots +"];
+    for (NSUInteger i=0;i<botButtons.count;i++) {
+        UIButton *button=botButtons[i];
+        button.backgroundColor=[UIColor colorWithWhite:0.08 alpha:0.84];
+        button.layer.cornerRadius=8;
+        button.layer.borderColor=[UIColor colorWithWhite:1 alpha:0.42].CGColor;
+        button.layer.borderWidth=1;
+        button.titleLabel.font=[UIFont boldSystemFontOfSize:12];
+        [button setTitle:botLabels[i] forState:UIControlStateNormal];
+        [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+        [self addSubview:button];
+    }
+    [_botMinusButton addTarget:self action:@selector(decreaseBotCount:) forControlEvents:UIControlEventTouchUpInside];
+    [_botPlusButton addTarget:self action:@selector(increaseBotCount:) forControlEvents:UIControlEventTouchUpInside];
+    [_botCountButton addTarget:self action:@selector(resetBotCount:) forControlEvents:UIControlEventTouchUpInside];
     _knob=[UIView new];_knob.userInteractionEnabled=NO;
     _knob.backgroundColor=[UIColor colorWithWhite:1 alpha:.18];
     _knob.layer.borderWidth=1.5;
@@ -83,6 +107,11 @@ extern void KisakApple_ModCommand(const char *command);
         }
     }
     _privateCheatsButton.frame=CGRectMake(CGRectGetMaxX(safe)-188, CGRectGetMinY(safe)+4, 184, 37);
+    const CGFloat botY=CGRectGetMinY(safe)+45;
+    const CGFloat right=CGRectGetMaxX(safe)-4;
+    _botMinusButton.frame=CGRectMake(right-184,botY,56,36);
+    _botCountButton.frame=CGRectMake(right-124,botY,64,36);
+    _botPlusButton.frame=CGRectMake(right-56,botY,56,36);
     [self refreshVisuals];
     if(self.inputChanged)self.inputChanged();
 }
@@ -92,6 +121,9 @@ extern void KisakApple_ModCommand(const char *command);
     _input.SetContext(available && context!=2,context==1);
     self.hidden=!available || context==2;
     _privateCheatsButton.hidden=!available || context!=0;
+    _botMinusButton.hidden=!available || context!=0;
+    _botCountButton.hidden=!available || context!=0;
+    _botPlusButton.hidden=!available || context!=0;
     [self refreshVisuals];
 }
 - (void)togglePrivateCheats:(id)sender {
@@ -102,6 +134,31 @@ extern void KisakApple_ModCommand(const char *command);
     KisakApple_ModCommand(_privateCheats ? "set ui_privateCheats 1" : "set ui_privateCheats 0");
     [_privateCheatsButton setTitle:(_privateCheats ? @"Private Cheats: ON" : @"Private Cheats: OFF")
                         forState:UIControlStateNormal];
+}
+- (void)applyBotCount {
+    // Keep zero as the default. The server-side PeZBOT scripts read these
+    // dvars when available; this UI does not itself create bot entities.
+    char command[64];
+    snprintf(command,sizeof(command),"set svr_pezbots %d",_botCount);
+    KisakApple_ModCommand(command);
+    KisakApple_ModCommand("set svr_pezbots_allies 0");
+    KisakApple_ModCommand("set svr_pezbots_axis 0");
+    [_botCountButton setTitle:[NSString stringWithFormat:@"Bots: %d",_botCount] forState:UIControlStateNormal];
+}
+- (void)decreaseBotCount:(id)sender {
+    (void)sender;
+    _botCount=MAX(0,_botCount-1);
+    [self applyBotCount];
+}
+- (void)increaseBotCount:(id)sender {
+    (void)sender;
+    _botCount=MIN(18,_botCount+1);
+    [self applyBotCount];
+}
+- (void)resetBotCount:(id)sender {
+    (void)sender;
+    _botCount=0;
+    [self applyBotCount];
 }
 - (void)refreshVisuals {
     const double now=CACurrentMediaTime();

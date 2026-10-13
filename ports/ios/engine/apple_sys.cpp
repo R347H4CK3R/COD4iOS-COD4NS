@@ -429,7 +429,7 @@ extern "C" int KisakApple_TakeNativeBotRemovalRequest() {
 
 extern "C" void KisakApple_RequestNativeTestBot() {
     std::lock_guard<std::mutex> guard(g_touchLock);
-    if (g_nativeBotRequests < 1) ++g_nativeBotRequests;
+    if (g_nativeBotRequests < 18) ++g_nativeBotRequests;
 }
 extern "C" int KisakApple_TakeNativeTestBotRequest() {
     std::lock_guard<std::mutex> guard(g_touchLock);

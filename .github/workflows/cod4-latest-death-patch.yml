@@ -1,0 +1,59 @@
+name: COD4iOS latest death respawn patched IPA
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/death-respawn-latest-20261012
+    paths:
+      - 'ports/ios/app/launcher.mm'
+      - 'ports/ios/app/engine_app.mm'
+      - 'ports/ios/engine/apple_sys.cpp'
+      - 'src/universal/com_files.cpp'
+      - 'src/universal/com_hunkuser.cpp'
+      - 'src/universal/com_memory.cpp'
+      - 'src/server_mp/sv_client_mp.cpp'
+      - 'src/server_mp/sv_archive_mp.cpp'
+      - 'src/qcommon/sv_msg_write_mp.cpp'
+      - 'ports/ios/core/mw3_*'
+      - 'src/bgame/bg_weapons.cpp'
+      - 'src/game_mp/g_combat_mp.cpp'
+      - '.github/workflows/cod4-latest-death-patch.yml'
+      - 'src/server_mp/sv_snapshot_mp.cpp'
+jobs:
+  compile:
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          cmake --version
+      - name: Configure iPhoneOS ARM64
+        run: bash tools/configure-ios.sh
+      - name: Build unsigned combined COD4iOS app
+        run: |
+          set -o pipefail
+          xcodebuild -project build/ios/xcode-engine/KisakCOD.xcodeproj \
+            -target KisakCOD-Combined -configuration Release -sdk iphoneos \
+            -jobs 2 CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build-ios.log
+      - name: Upload diagnostic build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cod4ios-ios-compile-log
+          path: build-ios.log
+          if-no-files-found: ignore
+      - name: Package unsigned IPA without retail game data
+        run: |
+          python3 tools/package-public-playtest.py \
+            --app build/ios/xcode-engine/ports/ios/Release-iphoneos/KisakCOD.app \
+            --source-root "$PWD" --output release/public
+      - name: Upload unsigned IPA and build report
+        uses: actions/upload-artifact@v4
+        with:
+          name: cod4ios-latest-death-patch-unsigned
+          path: |
+            release/public/*.ipa
+            release/public/*report*
+          if-no-files-found: error

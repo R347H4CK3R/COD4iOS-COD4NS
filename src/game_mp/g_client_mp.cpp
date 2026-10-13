@@ -320,11 +320,14 @@ void __cdecl ClientClearFields(gclient_s *client)
 #ifdef __APPLE__
 static int iosBotJoinDeadline[64] = {};
 static bool iosBotJoinPending[64] = {};
+static int iosBotClassStage[64] = {};
+static int iosBotClassTime[64] = {};
 static void IOS_BotQueueTeamJoin(int clientNum)
 {
     if (clientNum < 0 || clientNum >= 64) return;
     iosBotJoinDeadline[clientNum] = svs.time + 1500;
     iosBotJoinPending[clientNum] = true;
+    iosBotClassStage[clientNum] = 0;
 }
 void IOS_BotServiceTeamJoins()
 {
@@ -338,7 +341,46 @@ void IOS_BotServiceTeamJoins()
         Scr_AddString("autoassign");
         Scr_AddString("team_marinesopfor");
         Scr_Notify(&g_entities[i], scr_const.menuresponse, 2);
+        iosBotClassStage[i] = 1;
+        iosBotClassTime[i] = svs.time + 1000;
         Com_Printf(CON_CHANNEL_SERVER, "ios_native_bot: deferred autoassign sent for %d\\n", i);
+    }
+    // Each step runs on a separate frame after the GSC listener has processed
+    // the previous response. ModWarfare decides the team and actual spawn.
+    for (int i = 0; i < sv_maxclients->current.integer && i < 64; ++i)
+    {
+        if (!iosBotClassStage[i] || svs.time < iosBotClassTime[i]) continue;
+        if (svs.clients[i].header.state < CS_ACTIVE ||
+            !svs.clients[i].bIsTestClient || !g_entities[i].client)
+        {
+            iosBotClassStage[i] = 0;
+            continue;
+        }
+        if (iosBotClassStage[i] == 1)
+        {
+            const team_t team = g_entities[i].client->sess.cs.team;
+            if (team != TEAM_ALLIES && team != TEAM_AXIS)
+            {
+                iosBotClassTime[i] = svs.time + 300;
+                continue;
+            }
+            Scr_AddString("assault");
+            Scr_AddString(team == TEAM_ALLIES ? "changeclass_marines_mw" : "changeclass_opfor_mw");
+            Scr_Notify(&g_entities[i], scr_const.menuresponse, 2);
+            iosBotClassStage[i] = 2;
+            iosBotClassTime[i] = svs.time + 650;
+            Com_Printf(CON_CHANNEL_SERVER, "ios_native_bot: assault class requested for %d\\n", i);
+        }
+        else
+        {
+            // ModWarfare's changeclass_mw handler accepts the class and
+            // transitions the client out of spectator state.
+            Scr_AddString("accept");
+            Scr_AddString("changeclass_mw");
+            Scr_Notify(&g_entities[i], scr_const.menuresponse, 2);
+            iosBotClassStage[i] = 0;
+            Com_Printf(CON_CHANNEL_SERVER, "ios_native_bot: class confirmation sent for %d\\n", i);
+        }
     }
 }
 #endif

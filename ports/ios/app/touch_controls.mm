@@ -6,6 +6,7 @@
 #include "../input/TouchControls.h"
 
 extern void KisakApple_ModCommand(const char *command);
+extern "C" void KisakApple_RequestNativeTestBot();
 
 @implementation KISTouchControls {
     kisak::touch::State _input;
@@ -155,7 +156,7 @@ extern void KisakApple_ModCommand(const char *command);
     // Context is not a reliable indicator of an active listen server on all
     // iOS menu/scoreboard overlays. Try the guarded native server command
     // whenever + is tapped; its handler rejects calls before map startup.
-    KisakApple_ModCommand("ios_testbot");
+    KisakApple_RequestNativeTestBot();
     _botCount=MIN(18,_botCount+1);
     [self applyBotCount];
 }

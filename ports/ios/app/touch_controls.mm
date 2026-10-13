@@ -152,12 +152,10 @@ extern void KisakApple_ModCommand(const char *command);
 }
 - (void)increaseBotCount:(id)sender {
     (void)sender;
-    if (_context==1) {
-        // In-game proof of concept: create exactly one engine test client.
-        // This is not PeZBOT AI and does not add movement/combat behavior.
-        KisakApple_ModCommand("ios_testbot");
-        return;
-    }
+    // Context is not a reliable indicator of an active listen server on all
+    // iOS menu/scoreboard overlays. Try the guarded native server command
+    // whenever + is tapped; its handler rejects calls before map startup.
+    KisakApple_ModCommand("ios_testbot");
     _botCount=MIN(18,_botCount+1);
     [self applyBotCount];
 }

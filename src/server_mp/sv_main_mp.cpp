@@ -1251,7 +1251,6 @@ int __cdecl SV_Frame(int msec)
             {
                 --iosPendingBotAdds;
                 iosNextBotJoinTime = svs.time + 400;
-            {
                 if (SV_Loaded() && com_dedicated->current.integer == 0)
                 {
                     if (SV_AddTestClient())

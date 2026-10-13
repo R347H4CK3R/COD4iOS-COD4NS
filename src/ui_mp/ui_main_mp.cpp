@@ -3446,8 +3446,12 @@ void __cdecl UI_RunMenuScript(int localClientNum, const char **args, const char 
             v3 = va("%i", ui_dedicated->current.integer);
             Dvar_SetFromStringByNameFromSource("dedicated", v3, DVAR_SOURCE_EXTERNAL);
             Dvar_SetStringByName("g_gametype", (char *)sharedUiInfo.gameTypes[ui_netGameType->current.integer].gameType);
+            // Apply cheats only to a locally started, non-dedicated private match.
+            // Never alter the state of remote servers or server-browser joins.
+            const bool privateCheats = !ui_dedicated->current.integer &&
+                                       Dvar_GetBool("ui_privateCheats");
             v4 = va(
-                "wait ; wait ; map %s\n",
+                privateCheats ? "wait ; wait ; devmap %s\n" : "wait ; wait ; map %s\n",
                 (const char *)sharedUiInfo.mapList[ui_currentNetMap->current.integer].mapLoadName);
             Cbuf_AddText(localClientNum, v4);
         }

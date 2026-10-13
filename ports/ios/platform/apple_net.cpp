@@ -69,7 +69,8 @@ int OpenSocket(uint16_t port, const char *label)
     sockaddr_in address = {};
     address.sin_family = AF_INET;
     address.sin_len = sizeof(address);
-    address.sin_addr.s_addr = INADDR_ANY;
+    // Privacy build: never expose the server or client UDP listener on Wi-Fi/cellular.
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     address.sin_port = htons(port);
     if (bind(handle, reinterpret_cast<sockaddr *>(&address), sizeof(address)) < 0)
     {
@@ -77,7 +78,7 @@ int OpenSocket(uint16_t port, const char *label)
         close(handle);
         return -1;
     }
-    Com_Printf(CON_CHANNEL_SYSTEM, "NET: %s socket bound to port %u\n", label, port);
+    Com_Printf(CON_CHANNEL_SYSTEM, "NET: %s loopback-only socket bound to 127.0.0.1:%u\n", label, port);
     return handle;
 }
 
@@ -101,6 +102,9 @@ int __cdecl Sys_GetPacket(netadr_t *net_from, msg_t *net_message)
             continue;
         }
             SockadrToNetadr(from, *net_from);
+        // Defense in depth: discard any packet not sourced from loopback.
+        if (ntohl(from.sin_addr.s_addr) >> 24 != 127)
+            continue;
         net_message->readcount = 0;
         if (received == net_message->maxsize)
         {
@@ -120,6 +124,10 @@ char __cdecl Sys_SendPacket(int length, unsigned char *data, netadr_t to)
         Com_PrintError(CON_CHANNEL_SYSTEM, "Sys_SendPacket: bad address type %d\n", (int)to.type);
         return 0;
     }
+    // Loopback-only policy also blocks outbound master-server heartbeats,
+    // public matchmaking requests, and packets to remote game servers.
+    if (to.type != NA_IP || to.ip[0] != 127)
+        return 0;
     const int handle = s_ipSocket >= 0 ? s_ipSocket : s_serverSocket;
     if (handle < 0)
         return 0;

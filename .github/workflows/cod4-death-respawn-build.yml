@@ -1,0 +1,34 @@
+name: COD4 iOS death-respawn patched unsigned IPA
+on:
+  push:
+    branches:
+      - fix/death-respawn-snapshot-20261012
+    paths:
+      - '.github/workflows/cod4-death-respawn-build.yml'
+      - 'src/server_mp/sv_snapshot_mp.cpp'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure native iOS ARM64
+        run: bash tools/configure-ios.sh
+      - name: Compile combined SP and MP app
+        run: |
+          set -o pipefail
+          xcodebuild -project build/ios/xcode-engine/KisakCOD.xcodeproj -target KisakCOD-Combined -configuration Release -sdk iphoneos -jobs 2 CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build-ios.log
+      - name: Package unsigned IPA without proprietary game data
+        run: |
+          python3 tools/package-public-playtest.py --app build/ios/xcode-engine/ports/ios/Release-iphoneos/KisakCOD.app --source-root "$PWD" --output release/public
+      - name: Upload IPA and diagnostic report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cod4-death-respawn-patch
+          path: |
+            release/public/*.ipa
+            release/public/BUILD.json
+            build-ios.log
+          if-no-files-found: warn

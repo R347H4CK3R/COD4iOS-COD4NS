@@ -336,7 +336,7 @@ static void *KISEngineThreadMain(void *argument)
     _modPanel.layer.borderWidth=1;_modPanel.layer.borderColor=UIColor.cyanColor.CGColor;
     _modPanel.layer.cornerRadius=9;_modPanel.hidden=YES;
     [self.view addSubview:_modPanel];
-    [self modCategory:@"COD4 // MOD MENU" entries:@[@"Player",@"Weapons",@"Game",@"Visuals",@"Mods",@"Close"]];
+    [self modCategory:@"COD4 // MOD MENU" entries:@[@"Player",@"Weapons",@"Game",@"Visuals",@"Close"]];
     [NSTimer scheduledTimerWithTimeInterval:0.12 target:self selector:@selector(checkModCombo) userInfo:nil repeats:YES];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
@@ -372,7 +372,7 @@ static void *KISEngineThreadMain(void *argument)
     [self presentViewController:a animated:YES completion:nil];
 }
 - (void)modSelect:(UIButton *)sender {
-    NSArray *names=@[@"Player",@"Weapons",@"Perks",@"Lethals",@"Tacticals",@"Killstreaks",@"Game",@"Visuals",@"Mods",@"Close"];
+    NSArray *names=@[@"Player",@"Weapons",@"Perks",@"Lethals",@"Tacticals",@"Killstreaks",@"Game",@"Visuals",@"Close"];
     NSString *choice=[sender currentTitle];
     if([choice hasPrefix:@"  > "])choice=[choice substringFromIndex:4];
     if([choice containsString:@"Back"]){[self modCategory:@"COD4 // MOD MENU" entries:names];return;}
@@ -406,7 +406,7 @@ static void *KISEngineThreadMain(void *argument)
       @"Flashbang":@"flash_grenade_mp",@"Stun Grenade":@"concussion_grenade_mp",@"Smoke Grenade":@"smoke_grenade_mp"
     };
     for(NSString *name in weaponNames)if([choice containsString:name]) {
-        NSString *item=weaponNames[name];KisakApple_ModCommand([[@"give " stringByAppendingString:item] UTF8String]);
+        NSString *item=weaponNames[name];KisakApple_ModCommand("sv_cheats 1");KisakApple_ModCommand([[@"give " stringByAppendingString:item] UTF8String]);
         [self modMessage:@"Item request sent to local COD4 server (sv_cheats 1 required)."];
         return;
     }
@@ -423,11 +423,12 @@ static void *KISEngineThreadMain(void *argument)
        @"Refill Ammo":@"give ammo", @"Give All Weapons":@"give all"
     };
     for(NSString *name in commands)if([choice containsString:name]) {
+        KisakApple_ModCommand("sv_cheats 1");
         KisakApple_ModCommand(commands[name].UTF8String);
-        [self modMessage:@"Command queued. Available only when local server cheats are enabled (sv_cheats 1)."];
+        [self modMessage:@"Private cheat requested. This requires an offline local server."];
         return;
     }
-    if([choice containsString:@"Game"]){[self modCategory:@"GAME" entries:@[@"Mods",@"Back"]];return;}
+    if([choice containsString:@"Game"]){[self modCategory:@"GAME" entries:@[@"Back"]];return;}
     if([choice containsString:@"Visuals"]){[self modCategory:@"VISUALS" entries:@[@"Toggle touch controls",@"Back"]];return;}
     if([choice containsString:@"Toggle touch controls"]){_touchControls.hidden=!_touchControls.hidden;return;}
     if([choice containsString:@"Import Mod Folder"]){[self importModFolder];return;}

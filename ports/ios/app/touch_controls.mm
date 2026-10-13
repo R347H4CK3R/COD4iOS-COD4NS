@@ -123,7 +123,7 @@ extern void KisakApple_ModCommand(const char *command);
     _privateCheatsButton.hidden=!available || context!=0;
     _botMinusButton.hidden=!available || context!=0;
     _botCountButton.hidden=!available || context!=0;
-    _botPlusButton.hidden=!available || context!=0;
+    _botPlusButton.hidden=!available || (context!=0 && context!=1);
     [self refreshVisuals];
 }
 - (void)togglePrivateCheats:(id)sender {
@@ -152,6 +152,12 @@ extern void KisakApple_ModCommand(const char *command);
 }
 - (void)increaseBotCount:(id)sender {
     (void)sender;
+    if (_context==1) {
+        // In-game proof of concept: create exactly one engine test client.
+        // This is not PeZBOT AI and does not add movement/combat behavior.
+        KisakApple_ModCommand("ios_testbot");
+        return;
+    }
     _botCount=MIN(18,_botCount+1);
     [self applyBotCount];
 }
@@ -180,7 +186,12 @@ extern void KisakApple_ModCommand(const char *command);
 }
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
     (void)event;
-    return !self.hidden && _input.Hit({float(point.x),float(point.y)})!=-2;
+    if (self.hidden) return NO;
+    if (!_botPlusButton.hidden && CGRectContainsPoint(_botPlusButton.frame,point)) return YES;
+    if (!_botMinusButton.hidden && CGRectContainsPoint(_botMinusButton.frame,point)) return YES;
+    if (!_botCountButton.hidden && CGRectContainsPoint(_botCountButton.frame,point)) return YES;
+    if (!_privateCheatsButton.hidden && CGRectContainsPoint(_privateCheatsButton.frame,point)) return YES;
+    return _input.Hit({float(point.x),float(point.y)})!=-2;
 }
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     (void)event;

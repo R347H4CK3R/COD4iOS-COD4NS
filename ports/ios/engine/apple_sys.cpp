@@ -409,6 +409,20 @@ void KisakApple_TouchEvent(int phase, float x, float y)
     g_touches.push_back(KisakTouch{phase, static_cast<int>(x), static_cast<int>(y)});
 }
 
+// UI requests are queued until the game thread services the local server.
+// No console string parsing or ModWarfare GSC override is involved.
+static int g_nativeBotRequests = 0;
+extern "C" void KisakApple_RequestNativeTestBot() {
+    std::lock_guard<std::mutex> guard(g_touchLock);
+    if (g_nativeBotRequests < 1) ++g_nativeBotRequests;
+}
+extern "C" int KisakApple_TakeNativeTestBotRequest() {
+    std::lock_guard<std::mutex> guard(g_touchLock);
+    const int pending = g_nativeBotRequests;
+    g_nativeBotRequests = 0;
+    return pending;
+}
+
 void KisakApple_ModCommand(const char *command) {
     if(!command)return;
     static const char * const allowed[]={"sv_cheats 1","god","demigod","noclip","ufo","notarget","give ammo","give all","ios_testbot"};

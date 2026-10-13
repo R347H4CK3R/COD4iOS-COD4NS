@@ -1175,6 +1175,10 @@ void __cdecl SV_PreFrame()
     }
 }
 
+#ifdef __APPLE__
+extern "C" int KisakApple_TakeNativeTestBotRequest();
+#endif
+
 int __cdecl SV_Frame(int msec)
 {
     PROF_SCOPED("SV_Frame");
@@ -1194,6 +1198,22 @@ int __cdecl SV_Frame(int msec)
     {
         if (com_sv_running->current.enabled)
         {
+#ifdef __APPLE__
+            // Native touch-to-server test client path; independent of the GSC mod.
+            // Requests are consumed on the server frame, not the UI thread.
+            if (KisakApple_TakeNativeTestBotRequest())
+            {
+                if (SV_Loaded() && com_dedicated->current.integer == 0)
+                {
+                    if (SV_AddTestClient())
+                        Com_Printf(CON_CHANNEL_SERVER, "ios_native_bot: test client created\\n");
+                    else
+                        Com_PrintWarning(CON_CHANNEL_SERVER, "ios_native_bot: no free client slot\\n");
+                }
+                else
+                    Com_PrintWarning(CON_CHANNEL_SERVER, "ios_native_bot: local server not ready\\n");
+            }
+#endif
             if (!sv_pure->current.enabled && fs_numServerIwds)
                 FS_ShutdownServerIwdNames();
             if (SV_CheckPaused())

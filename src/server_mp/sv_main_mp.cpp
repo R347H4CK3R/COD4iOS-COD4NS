@@ -1216,8 +1216,14 @@ int __cdecl SV_Frame(int msec)
                     Com_Printf(CON_CHANNEL_SERVER, "ios_native_bot: removed test client %d\\n", i);
                 }
             }
-            const int iosBotAddRequests = KisakApple_TakeNativeTestBotRequest();
-            for (int request = 0; request < iosBotAddRequests; ++request)
+            // Serialize bot joins across server frames to avoid snapshot bursts.
+            static int iosPendingBotAdds = 0;
+            const int incomingBotAdds = KisakApple_TakeNativeTestBotRequest();
+            iosPendingBotAdds = (iosPendingBotAdds + incomingBotAdds > 18)
+                ? 18 : iosPendingBotAdds + incomingBotAdds;
+            if (iosPendingBotAdds > 0)
+            {
+                --iosPendingBotAdds;
             {
                 if (SV_Loaded() && com_dedicated->current.integer == 0)
                 {

@@ -1200,16 +1200,13 @@ void __cdecl SV_BotUserMove(client_t *cl)
                     if (stuckAttempts[botIndex] > 2)
                         nullcmd.buttons |= BUTTON_JUMP;
                 }
-                else if (chosen < 0)
+                else if (chosen < 0 && nullcmd.forwardmove == 0)
                 {
-                    // Keep patrolling with consistent headings instead of random aim.
+                    // Patrol only when no pursuit heading has been selected.
                     nullcmd.forwardmove = 75;
                     nullcmd.rightmove = (botIndex & 1) ? 38 : -38;
-                    if (nullcmd.forwardmove == 0)
-                    {
-                        nullcmd.angles[0] = cl->lastUsercmd.angles[0];
-                        nullcmd.angles[1] = cl->lastUsercmd.angles[1];
-                    }
+                    nullcmd.angles[0] = cl->lastUsercmd.angles[0];
+                    nullcmd.angles[1] = cl->lastUsercmd.angles[1];
                 }
             }
 

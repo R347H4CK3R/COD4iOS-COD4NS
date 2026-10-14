@@ -1115,8 +1115,12 @@ void __cdecl SV_BotUserMove(client_t *cl)
                                  (g_entities[botIndex].r.currentOrigin[2] + 55.0f);
                 const float yaw = atan2f(dy, dx) * 57.2957795f;
                 const float pitch = -atan2f(dz, sqrtf(dx * dx + dy * dy)) * 57.2957795f;
-                nullcmd.angles[0] = static_cast<int>(pitch * (65536.0f / 360.0f));
-                nullcmd.angles[1] = static_cast<int>(yaw * (65536.0f / 360.0f));
+                // Usercmd angles are relative to the server's delta-angle correction.
+                // Preserve the 16-bit angle wrapping expected by the engine.
+                nullcmd.angles[0] = (static_cast<int>(pitch * (65536.0f / 360.0f)) -
+                                     v1->delta_angles[0]) & 65535;
+                nullcmd.angles[1] = (static_cast<int>(yaw * (65536.0f / 360.0f)) -
+                                     v1->delta_angles[1]) & 65535;
                 nullcmd.buttons |= BUTTON_ATTACK;
                 nullcmd.forwardmove = bestDistanceSq > 350.0f * 350.0f ? 75 : 0;
             }

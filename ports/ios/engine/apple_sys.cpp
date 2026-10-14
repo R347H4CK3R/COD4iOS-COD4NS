@@ -413,6 +413,16 @@ void KisakApple_TouchEvent(int phase, float x, float y)
 // No console string parsing or ModWarfare GSC override is involved.
 static int g_nativeBotRequests = 0;
 static int g_nativeBotSkill = 3;
+static int g_nativeBotPlaystyle = 2;
+extern "C" void KisakApple_SetNativeBotPlaystyle(int style) {
+    std::lock_guard<std::mutex> guard(g_touchLock);
+    g_nativeBotPlaystyle = style < 0 ? 0 : (style > 2 ? 2 : style);
+}
+extern "C" int KisakApple_GetNativeBotPlaystyle() {
+    std::lock_guard<std::mutex> guard(g_touchLock);
+    return g_nativeBotPlaystyle;
+}
+
 extern "C" void KisakApple_SetNativeBotSkill(int skill) {
     std::lock_guard<std::mutex> guard(g_touchLock);
     g_nativeBotSkill = skill < 1 ? 1 : (skill > 5 ? 5 : skill);

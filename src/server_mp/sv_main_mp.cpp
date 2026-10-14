@@ -1072,8 +1072,54 @@ void __cdecl SV_BotUserMove(client_t *cl)
                     break;
                 }
             }
-            (void)enemyPresent;
-            // Hold fire until the bot controller has valid LOS and aim.
+            // Acquire nearest visible opponent, then aim toward its chest.
+            // Trace starts at approximate standing eye height and excludes self.
+            int chosen = -1;
+            float bestDistanceSq = 1600.0f * 1600.0f;
+            for (int candidate = 0; candidate < sv_maxclients->current.integer; ++candidate)
+            {
+                if (candidate == botIndex || svs.clients[candidate].header.state != CS_ACTIVE)
+                    continue;
+                const gentity_s *target = &g_entities[candidate];
+                if (!target->client || target->client->sess.sessionState != SESS_STATE_PLAYING)
+                    continue;
+                const team_t otherTeam = target->client->sess.cs.team;
+                if (otherTeam == TEAM_SPECTATOR || otherTeam == botTeam ||
+                    (botTeam != TEAM_AXIS && botTeam != TEAM_ALLIES))
+                    continue;
+                float start[3], end[3];
+                for (int axis = 0; axis < 3; ++axis)
+                {
+                    start[axis] = g_entities[botIndex].r.currentOrigin[axis];
+                    end[axis] = target->r.currentOrigin[axis];
+                }
+                start[2] += 55.0f;
+                end[2] += 45.0f;
+                const float dx = end[0] - start[0];
+                const float dy = end[1] - start[1];
+                const float dz = end[2] - start[2];
+                const float distanceSq = dx * dx + dy * dy + dz * dz;
+                if (distanceSq >= bestDistanceSq) continue;
+                if (!G_LocationalTracePassed(start, end, botIndex, candidate, 0x2806831, nullptr))
+                    continue;
+                bestDistanceSq = distanceSq;
+                chosen = candidate;
+            }
+            if (chosen >= 0)
+            {
+                const gentity_s *target = &g_entities[chosen];
+                const float dx = target->r.currentOrigin[0] - g_entities[botIndex].r.currentOrigin[0];
+                const float dy = target->r.currentOrigin[1] - g_entities[botIndex].r.currentOrigin[1];
+                const float dz = target->r.currentOrigin[2] + 45.0f -
+                                 (g_entities[botIndex].r.currentOrigin[2] + 55.0f);
+                const float yaw = atan2f(dy, dx) * 57.2957795f;
+                const float pitch = -atan2f(dz, sqrtf(dx * dx + dy * dy)) * 57.2957795f;
+                nullcmd.angles[0] = static_cast<int>(pitch * (65536.0f / 360.0f));
+                nullcmd.angles[1] = static_cast<int>(yaw * (65536.0f / 360.0f));
+                nullcmd.buttons |= BUTTON_ATTACK;
+                nullcmd.forwardmove = bestDistanceSq > 350.0f * 350.0f ? 75 : 0;
+            }
+            // Movement fallback remains simple until waypoint navigation exists.
             if (KISAK_RANDOM() < 0.5)
                 nullcmd.buttons |= BUTTON_USE | BUTTON_USE_RELOAD;
             if (KISAK_RANDOM() >= 0.3300000131130219)

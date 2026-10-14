@@ -8,6 +8,7 @@
 extern void KisakApple_ModCommand(const char *command);
 extern "C" void KisakApple_RequestNativeTestBot();
 extern "C" void KisakApple_RequestNativeBotRemoval(int count);
+extern "C" void KisakApple_SetNativeBotSkill(int skill);
 
 @implementation KISTouchControls {
     kisak::touch::State _input;
@@ -20,6 +21,8 @@ extern "C" void KisakApple_RequestNativeBotRemoval(int count);
     UIButton *_botMinusButton;
     UIButton *_botCountButton;
     UIButton *_botPlusButton;
+    UIButton *_botDifficultyButton;
+    int _botDifficulty;
     int _botCount;
 }
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -64,6 +67,8 @@ extern "C" void KisakApple_RequestNativeBotRemoval(int count);
     [_privateCheatsButton addTarget:self action:@selector(togglePrivateCheats:) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:_privateCheatsButton];
     _botCount=0;
+    _botDifficulty=3;
+    KisakApple_SetNativeBotSkill(_botDifficulty);
     _botMinusButton=[UIButton buttonWithType:UIButtonTypeSystem];
     _botCountButton=[UIButton buttonWithType:UIButtonTypeSystem];
     _botPlusButton=[UIButton buttonWithType:UIButtonTypeSystem];
@@ -83,6 +88,14 @@ extern "C" void KisakApple_RequestNativeBotRemoval(int count);
     [_botMinusButton addTarget:self action:@selector(decreaseBotCount:) forControlEvents:UIControlEventTouchUpInside];
     [_botPlusButton addTarget:self action:@selector(increaseBotCount:) forControlEvents:UIControlEventTouchUpInside];
     [_botCountButton addTarget:self action:@selector(resetBotCount:) forControlEvents:UIControlEventTouchUpInside];
+    _botDifficultyButton=[UIButton buttonWithType:UIButtonTypeSystem];
+    _botDifficultyButton.backgroundColor=[UIColor colorWithWhite:0.08 alpha:0.84];
+    _botDifficultyButton.layer.cornerRadius=8;
+    _botDifficultyButton.titleLabel.font=[UIFont boldSystemFontOfSize:12];
+    [_botDifficultyButton setTitle:@"Difficulty: Normal" forState:UIControlStateNormal];
+    [_botDifficultyButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    [_botDifficultyButton addTarget:self action:@selector(cycleBotDifficulty:) forControlEvents:UIControlEventTouchUpInside];
+    [self addSubview:_botDifficultyButton];
     _knob=[UIView new];_knob.userInteractionEnabled=NO;
     _knob.backgroundColor=[UIColor colorWithWhite:1 alpha:.18];
     _knob.layer.borderWidth=1.5;
@@ -114,6 +127,7 @@ extern "C" void KisakApple_RequestNativeBotRemoval(int count);
     _botMinusButton.frame=CGRectMake(right-184,botY,56,36);
     _botCountButton.frame=CGRectMake(right-124,botY,64,36);
     _botPlusButton.frame=CGRectMake(right-56,botY,56,36);
+    _botDifficultyButton.frame=CGRectMake(right-184,botY+40,184,34);
     [self refreshVisuals];
     if(self.inputChanged)self.inputChanged();
 }
@@ -126,6 +140,7 @@ extern "C" void KisakApple_RequestNativeBotRemoval(int count);
     _botMinusButton.hidden=!available || context!=0;
     _botCountButton.hidden=!available || context!=0;
     _botPlusButton.hidden=!available || (context!=0 && context!=1);
+    _botDifficultyButton.hidden=!available || context!=0;
     [self refreshVisuals];
 }
 - (void)togglePrivateCheats:(id)sender {
@@ -136,6 +151,14 @@ extern "C" void KisakApple_RequestNativeBotRemoval(int count);
     KisakApple_ModCommand(_privateCheats ? "set ui_privateCheats 1" : "set ui_privateCheats 0");
     [_privateCheatsButton setTitle:(_privateCheats ? @"Private Cheats: ON" : @"Private Cheats: OFF")
                         forState:UIControlStateNormal];
+}
+- (void)cycleBotDifficulty:(id)sender {
+    (void)sender;
+    _botDifficulty = _botDifficulty % 5 + 1;
+    KisakApple_SetNativeBotSkill(_botDifficulty);
+    NSArray<NSString *> *labels=@[@"", @"Recruit", @"Easy", @"Normal", @"Hard", @"Veteran"];
+    [_botDifficultyButton setTitle:[NSString stringWithFormat:@"Difficulty: %@",labels[_botDifficulty]]
+                         forState:UIControlStateNormal];
 }
 - (void)applyBotCount {
     // Keep zero as the default. The server-side PeZBOT scripts read these

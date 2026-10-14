@@ -1160,6 +1160,17 @@ void __cdecl SV_BotUserMove(client_t *cl)
                     nullcmd.forwardmove = 95;
                 }
             }
+            // Once per five seconds per bot: enough diagnostics without frame-rate log spam.
+            static int nextBotCombatLog[64] = {};
+            if (botIndex >= 0 && botIndex < 64 && svs.time >= nextBotCombatLog[botIndex])
+            {
+                nextBotCombatLog[botIndex] = svs.time + 5000;
+                Com_Printf(CON_CHANNEL_SERVER,
+                    "ios_bot_ai: bot=%d team=%d enemy=%d visible=%d forward=%d fire=%d\\n",
+                    botIndex, static_cast<int>(botTeam), enemyPresent ? 1 : 0,
+                    chosen, static_cast<int>(nullcmd.forwardmove),
+                    (nullcmd.buttons & BUTTON_ATTACK) ? 1 : 0);
+            }
             // Per-client low-cost position sampling detects obstructed movement.
             // Do not mark freshly spawned or stationary attacking bots as stuck.
             static float lastSampleOrigin[64][3] = {};

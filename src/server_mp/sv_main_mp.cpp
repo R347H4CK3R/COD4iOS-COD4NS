@@ -1032,6 +1032,10 @@ void __cdecl SV_UpdatePerformanceFrame(float time)
     }
 }
 
+#ifdef __APPLE__
+extern "C" int KisakApple_GetNativeBotSkill();
+#endif
+
 void __cdecl SV_BotUserMove(client_t *cl)
 {
     playerState_s *v1; // esi
@@ -1123,7 +1127,16 @@ void __cdecl SV_BotUserMove(client_t *cl)
                                      static_cast<int>(v1->delta_angles[0])) & 65535;
                 nullcmd.angles[1] = (static_cast<int>(yaw * (65536.0f / 360.0f)) -
                                      static_cast<int>(v1->delta_angles[1])) & 65535;
-                nullcmd.buttons |= BUTTON_ATTACK;
+                // PeZBOT-inspired skill levels adjust firing opportunities.
+#ifdef __APPLE__
+                const int skill = KisakApple_GetNativeBotSkill();
+#else
+                const int skill = 3;
+#endif
+                const int firingCycle = 1500 - (skill - 1) * 230;
+                const int firingWindow = 250 + skill * 135;
+                if (((svs.time + botIndex * 127) % firingCycle) < firingWindow)
+                    nullcmd.buttons |= BUTTON_ATTACK;
                 // Keep mobile during engagements; sidestep at close range.
                 nullcmd.forwardmove = bestDistanceSq > 250.0f * 250.0f ? 85 : 24;
                 nullcmd.rightmove = (botIndex & 1) ? 44 : -44;

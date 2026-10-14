@@ -1120,13 +1120,54 @@ void __cdecl SV_BotUserMove(client_t *cl)
                 nullcmd.buttons |= BUTTON_ATTACK;
                 nullcmd.forwardmove = bestDistanceSq > 350.0f * 350.0f ? 75 : 0;
             }
-            // Basic patrol while no visible target is available.
-            if (chosen < 0)
+            // Per-client low-cost position sampling detects obstructed movement.
+            // Do not mark freshly spawned or stationary attacking bots as stuck.
+            static float lastSampleOrigin[64][3] = {};
+            static int lastSampleTime[64] = {};
+            static int stuckUntil[64] = {};
+            static int stuckAttempts[64] = {};
+            if (botIndex >= 0 && botIndex < 64)
             {
-                nullcmd.forwardmove = 48;
-                nullcmd.rightmove = (botIndex & 1) ? 30 : -30;
-                nullcmd.angles[0] = cl->lastUsercmd.angles[0];
-                nullcmd.angles[1] = cl->lastUsercmd.angles[1];
+                const float *pos = g_entities[botIndex].r.currentOrigin;
+                if (!lastSampleTime[botIndex] || svs.time < lastSampleTime[botIndex])
+                {
+                    for (int axis = 0; axis < 3; ++axis) lastSampleOrigin[botIndex][axis] = pos[axis];
+                    lastSampleTime[botIndex] = svs.time;
+                    stuckAttempts[botIndex] = 0;
+                    stuckUntil[botIndex] = 0;
+                }
+                if (svs.time - lastSampleTime[botIndex] >= 1200)
+                {
+                    const float dx = pos[0] - lastSampleOrigin[botIndex][0];
+                    const float dy = pos[1] - lastSampleOrigin[botIndex][1];
+                    const bool wasTryingToMove = cl->lastUsercmd.forwardmove != 0 ||
+                                                 cl->lastUsercmd.rightmove != 0;
+                    if (wasTryingToMove && dx * dx + dy * dy < 28.0f * 28.0f)
+                    {
+                        stuckUntil[botIndex] = svs.time + 900;
+                        ++stuckAttempts[botIndex];
+                    }
+                    else if (dx * dx + dy * dy > 80.0f * 80.0f)
+                        stuckAttempts[botIndex] = 0;
+                    for (int axis = 0; axis < 3; ++axis) lastSampleOrigin[botIndex][axis] = pos[axis];
+                    lastSampleTime[botIndex] = svs.time;
+                }
+                if (svs.time < stuckUntil[botIndex])
+                {
+                    // Back up and alternate strafing to escape corners.
+                    nullcmd.forwardmove = -90;
+                    nullcmd.rightmove = (stuckAttempts[botIndex] & 1) ? 110 : -110;
+                    if (stuckAttempts[botIndex] > 2)
+                        nullcmd.buttons |= BUTTON_JUMP;
+                }
+                else if (chosen < 0)
+                {
+                    // Keep patrolling with consistent headings instead of random aim.
+                    nullcmd.forwardmove = 75;
+                    nullcmd.rightmove = (botIndex & 1) ? 38 : -38;
+                    nullcmd.angles[0] = cl->lastUsercmd.angles[0];
+                    nullcmd.angles[1] = cl->lastUsercmd.angles[1];
+                }
             }
 
         }

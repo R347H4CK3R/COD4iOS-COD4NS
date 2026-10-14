@@ -22,6 +22,10 @@ extern "C" void KisakApple_SetNativeBotSkill(int skill);
     UIButton *_botCountButton;
     UIButton *_botPlusButton;
     UIButton *_botDifficultyButton;
+    UIButton *_botPlaystyleButton;
+    UIButton *_botPerksButton;
+    int _botPlaystyle;
+    BOOL _botPerks;
     int _botDifficulty;
     int _botCount;
 }
@@ -68,6 +72,8 @@ extern "C" void KisakApple_SetNativeBotSkill(int skill);
     [self addSubview:_privateCheatsButton];
     _botCount=0;
     _botDifficulty=3;
+    _botPlaystyle=2;
+    _botPerks=YES;
     KisakApple_SetNativeBotSkill(_botDifficulty);
     _botMinusButton=[UIButton buttonWithType:UIButtonTypeSystem];
     _botCountButton=[UIButton buttonWithType:UIButtonTypeSystem];
@@ -96,6 +102,19 @@ extern "C" void KisakApple_SetNativeBotSkill(int skill);
     [_botDifficultyButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
     [_botDifficultyButton addTarget:self action:@selector(cycleBotDifficulty:) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:_botDifficultyButton];
+    _botPlaystyleButton=[UIButton buttonWithType:UIButtonTypeSystem];
+    _botPerksButton=[UIButton buttonWithType:UIButtonTypeSystem];
+    for (UIButton *button in @[_botPlaystyleButton,_botPerksButton]) {
+        button.backgroundColor=[UIColor colorWithWhite:0.08 alpha:0.84];
+        button.layer.cornerRadius=8;
+        button.titleLabel.font=[UIFont boldSystemFontOfSize:12];
+        [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+        [self addSubview:button];
+    }
+    [_botPlaystyleButton setTitle:@"Style: Mixed" forState:UIControlStateNormal];
+    [_botPerksButton setTitle:@"Bot Perks: ON" forState:UIControlStateNormal];
+    [_botPlaystyleButton addTarget:self action:@selector(cycleBotPlaystyle:) forControlEvents:UIControlEventTouchUpInside];
+    [_botPerksButton addTarget:self action:@selector(toggleBotPerks:) forControlEvents:UIControlEventTouchUpInside];
     _knob=[UIView new];_knob.userInteractionEnabled=NO;
     _knob.backgroundColor=[UIColor colorWithWhite:1 alpha:.18];
     _knob.layer.borderWidth=1.5;
@@ -128,6 +147,8 @@ extern "C" void KisakApple_SetNativeBotSkill(int skill);
     _botCountButton.frame=CGRectMake(right-124,botY,64,36);
     _botPlusButton.frame=CGRectMake(right-56,botY,56,36);
     _botDifficultyButton.frame=CGRectMake(right-184,botY+40,184,34);
+    _botPlaystyleButton.frame=CGRectMake(right-184,botY+78,184,34);
+    _botPerksButton.frame=CGRectMake(right-184,botY+116,184,34);
     [self refreshVisuals];
     if(self.inputChanged)self.inputChanged();
 }
@@ -141,6 +162,8 @@ extern "C" void KisakApple_SetNativeBotSkill(int skill);
     _botCountButton.hidden=!available || context!=0;
     _botPlusButton.hidden=!available || (context!=0 && context!=1);
     _botDifficultyButton.hidden=!available || context!=0;
+    _botPlaystyleButton.hidden=!available || context!=0;
+    _botPerksButton.hidden=!available || context!=0;
     [self refreshVisuals];
 }
 - (void)togglePrivateCheats:(id)sender {
@@ -156,9 +179,31 @@ extern "C" void KisakApple_SetNativeBotSkill(int skill);
     (void)sender;
     _botDifficulty = _botDifficulty % 5 + 1;
     KisakApple_SetNativeBotSkill(_botDifficulty);
+    static const char *skills[]={"","0.2","0.4","0.6","0.8","1.0"};
+    char skillCommand[64];
+    snprintf(skillCommand,sizeof(skillCommand),"set svr_pezbots_skill %s",skills[_botDifficulty]);
+    KisakApple_ModCommand(skillCommand);
     NSArray<NSString *> *labels=@[@"", @"Recruit", @"Easy", @"Normal", @"Hard", @"Veteran"];
     [_botDifficultyButton setTitle:[NSString stringWithFormat:@"Difficulty: %@",labels[_botDifficulty]]
                          forState:UIControlStateNormal];
+}
+- (void)cycleBotPlaystyle:(id)sender {
+    (void)sender;
+    _botPlaystyle=(_botPlaystyle+1)%3;
+    KisakApple_ModCommand(_botPlaystyle==0 ? "set svr_pezbots_playstyle 0" :
+                          (_botPlaystyle==1 ? "set svr_pezbots_playstyle 1" :
+                           "set svr_pezbots_playstyle 2"));
+    NSArray<NSString *> *styles=@[@"Original", @"Run & Gun", @"Mixed"];
+    [_botPlaystyleButton setTitle:[NSString stringWithFormat:@"Style: %@",styles[_botPlaystyle]]
+                        forState:UIControlStateNormal];
+}
+- (void)toggleBotPerks:(id)sender {
+    (void)sender;
+    _botPerks=!_botPerks;
+    KisakApple_ModCommand(_botPerks ? "set svr_pezbots_useperks 1" :
+                                     "set svr_pezbots_useperks 0");
+    [_botPerksButton setTitle:(_botPerks ? @"Bot Perks: ON" : @"Bot Perks: OFF")
+                    forState:UIControlStateNormal];
 }
 - (void)applyBotCount {
     // Keep zero as the default. The server-side PeZBOT scripts read these

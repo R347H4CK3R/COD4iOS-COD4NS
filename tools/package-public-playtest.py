@@ -94,6 +94,19 @@ def main():
             subprocess.run(['codesign', '--remove-signature', str(app / relative)], check=True)
             unsigned = subprocess.run(['codesign', '-d', str(app / relative)], capture_output=True, text=True)
             assert unsigned.returncode and 'not signed at all' in unsigned.stderr
+        # Bundle the repository-owned ModWarfare/PeZBOT menu extension.
+        mod_source = root / 'ports/ios/modwarfare-pezbot'
+        mod_target = app / 'mods/ModWarfare'
+        assert (mod_source / 'ui_mp/scriptmenus/pezbot_manager.menu').is_file(), 'PeZBOT menu source missing'
+        shutil.copytree(mod_source, mod_target)
+        menu = mod_target / 'ui_mp/scriptmenus/pezbot_manager.menu'
+        menu_text = menu.read_text(encoding='utf-8')
+        for required in ['name "pezbot_manager"', 'ios_bot_menu_add', 'ios_bot_menu_remove',
+                         'ios_bot_menu_clear', 'ios_bot_menu_skill', 'svr_pezbots_useperks']:
+            assert required in menu_text, 'PeZBOT menu validation failed: ' + required
+        report['modWarfareMenuIncluded'] = True
+        report['modWarfareMenuPath'] = 'mods/ModWarfare/ui_mp/scriptmenus/pezbot_manager.menu'
+
         licenses = app / 'Licenses'; licenses.mkdir()
         license_files = {'GPL-3.0.txt': root / 'LICENSE',
                          'OpenAssetTools.txt': root / 'ports/ios/zoneload/LICENSE.OpenAssetTools',

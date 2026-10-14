@@ -1049,6 +1049,8 @@ void __cdecl SV_BotUserMove(client_t *cl)
                 "%s",
                 "SV_GameClientNum( cl - svs.clients )->weapon == static_cast<byte>( SV_GameClientNum( cl - svs.clients )->weapon )");
         nullcmd.weapon = SV_GameClientNum(cl - svs.clients)->weapon;
+        // Synthetic clients need a current command timestamp for pmove.
+        nullcmd.serverTime = svs.time;
         if (!G_GetClientArchiveTime(cl - svs.clients))
         {
             // Do not fire randomly: only consider active opposing players.

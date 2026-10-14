@@ -1078,32 +1078,34 @@ void __cdecl SV_BuildClientSnapshot(client_t *client)
                             Com_Error(ERR_FATAL, "svs.nextSnapshotEntities wrapped");
                         ++v5->num_entities;
                     }
-                    for (i = 0; i < CachedSnapshot->num_clients; ++i)
+                    // Packet-client deltas require monotonically increasing indices.
+                    // Cached frame entries are not guaranteed to retain that order
+                    // during bot disconnect/reconnect and respawn transitions.
+                    for (int orderedIndex = 0;
+                         orderedIndex < sv_maxclients->current.integer &&
+                         orderedIndex < (int)(sizeof(v12) / sizeof(v12[0]));
+                         ++orderedIndex)
                     {
-                        v20 = &svs.cachedSnapshotClients[(i + CachedSnapshot->first_client) % 4096];
-                        // Cached snapshots can contain stale or repeated client entries
-                        // around death/respawn and bot disconnect/reconnect transitions.
-                        // Never serialize duplicate or out-of-range client indices.
-                        const int cachedClientIndex = v20->cs.clientIndex;
-                        if (cachedClientIndex < 0 ||
-                            cachedClientIndex >= sv_maxclients->current.integer ||
-                            cachedClientIndex >= (int)(sizeof(v12) / sizeof(v12[0])) ||
-                            v12[cachedClientIndex])
+                        for (i = 0; i < CachedSnapshot->num_clients; ++i)
                         {
-                            continue;
+                            v20 = &svs.cachedSnapshotClients[(i + CachedSnapshot->first_client) % 4096];
+                            const int cachedClientIndex = v20->cs.clientIndex;
+                            if (cachedClientIndex != orderedIndex || v12[orderedIndex])
+                                continue;
+                            v9 = &svs.snapshotClients[svs.nextSnapshotClients % svs.numSnapshotClients];
+                            memcpy(v9, &v20->cs, sizeof(clientState_s));
+                            v12[orderedIndex] = 1;
+                            if (++svs.nextSnapshotClients >= 2147483646)
+                                Com_Error(ERR_FATAL, "svs.nextSnapshotClients wrapped");
+                            if (++v5->num_clients + v5->first_client != svs.nextSnapshotClients)
+                                MyAssertHandler(
+                                    ".\\server_mp\\sv_snapshot_mp.cpp",
+                                    1847,
+                                    0,
+                                    "%s",
+                                    "frame->first_client + frame->num_clients == svs.nextSnapshotClients");
+                            break;
                         }
-                        v9 = &svs.snapshotClients[svs.nextSnapshotClients % svs.numSnapshotClients];
-                        memcpy(v9, &v20->cs, sizeof(clientState_s));
-                        v12[cachedClientIndex] = 1;
-                        if (++svs.nextSnapshotClients >= 2147483646)
-                            Com_Error(ERR_FATAL, "svs.nextSnapshotClients wrapped");
-                        if (++v5->num_clients + v5->first_client != svs.nextSnapshotClients)
-                            MyAssertHandler(
-                                ".\\server_mp\\sv_snapshot_mp.cpp",
-                                1847,
-                                0,
-                                "%s",
-                                "frame->first_client + frame->num_clients == svs.nextSnapshotClients");
                     }
                 }
                 else

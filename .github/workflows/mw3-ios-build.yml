@@ -21,6 +21,8 @@ on:
       - 'src/bgame/bg_weapons.cpp'
       - 'src/game_mp/g_combat_mp.cpp'
       - '.github/workflows/mw3-ios-build.yml'
+      - 'tools/package-public-playtest.py'
+      - 'ports/ios/modwarfare-pezbot/**'
 jobs:
   compile:
     runs-on: macos-15

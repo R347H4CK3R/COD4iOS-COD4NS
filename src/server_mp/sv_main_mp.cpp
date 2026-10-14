@@ -1306,8 +1306,7 @@ void __cdecl SV_BotUserMove(client_t *cl)
             nullcmd.serverTime = v1->commandTime + 1;
         if (nullcmd.serverTime > svs.time + 200)
             nullcmd.serverTime = svs.time + 200;
-        // Only retain attack while a live, visible target was actually chosen.
-        // The bot-controller branch explicitly acquires a target before firing.
+        // Leave attack decisions to the line-of-sight-gated AI above.
         cl->header.deltaMessage = cl->header.netchan.outgoingSequence - 1;
         SV_ClientThink(cl, &nullcmd);
     }

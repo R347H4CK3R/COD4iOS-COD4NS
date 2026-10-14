@@ -1406,6 +1406,9 @@ void __cdecl SV_PreFrame()
 #ifdef __APPLE__
 extern "C" int KisakApple_TakeNativeTestBotRequest();
 extern "C" int KisakApple_TakeNativeBotRemovalRequest();
+extern "C" void KisakApple_RequestNativeBotRemoval(int count);
+extern "C" void KisakApple_SetNativeBotSkill(int skill);
+extern "C" void KisakApple_SetNativeBotPlaystyle(int style);
 extern void IOS_BotServiceTeamJoins();
 #endif
 
@@ -1429,6 +1432,34 @@ int __cdecl SV_Frame(int msec)
         if (com_sv_running->current.enabled)
         {
 #ifdef __APPLE__
+            // ModWarfare UI menu toggles local-only command dvars. Changes
+            // are consumed on the listen-server thread, without GSC patches.
+            static bool iosBotMenuInitialized = false;
+            static int iosLastAddToggle = 0, iosLastRemoveToggle = 0, iosLastClearToggle = 0;
+            if (!iosBotMenuInitialized) {
+                iosLastAddToggle = Dvar_GetInt("ios_bot_menu_add");
+                iosLastRemoveToggle = Dvar_GetInt("ios_bot_menu_remove");
+                iosLastClearToggle = Dvar_GetInt("ios_bot_menu_clear");
+                iosBotMenuInitialized = true;
+            }
+            const int iosAddToggle = Dvar_GetInt("ios_bot_menu_add");
+            const int iosRemoveToggle = Dvar_GetInt("ios_bot_menu_remove");
+            const int iosClearToggle = Dvar_GetInt("ios_bot_menu_clear");
+            if (iosAddToggle != iosLastAddToggle)
+                KisakApple_RequestNativeTestBot();
+            if (iosRemoveToggle != iosLastRemoveToggle)
+                KisakApple_RequestNativeBotRemoval(1);
+            if (iosClearToggle != iosLastClearToggle)
+                KisakApple_RequestNativeBotRemoval(64);
+            iosLastAddToggle = iosAddToggle;
+            iosLastRemoveToggle = iosRemoveToggle;
+            iosLastClearToggle = iosClearToggle;
+            const int botMenuSkill = Dvar_GetInt("ios_bot_menu_skill");
+            if (botMenuSkill >= 1 && botMenuSkill <= 5)
+                KisakApple_SetNativeBotSkill(botMenuSkill);
+            const int botMenuStyle = Dvar_GetInt("ios_bot_menu_style");
+            if (botMenuStyle >= 0 && botMenuStyle <= 2)
+                KisakApple_SetNativeBotPlaystyle(botMenuStyle);
             // Native touch-to-server test client path; independent of the GSC mod.
             // Requests are consumed on the server frame, not the UI thread.
             static int iosPendingBotAdds = 0;

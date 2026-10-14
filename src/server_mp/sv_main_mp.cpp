@@ -1203,7 +1203,8 @@ void __cdecl SV_BotUserMove(client_t *cl)
             // PeZBOT-inspired local route selection: test short candidate
             // corridors before blindly walking at a wall. This supplements
             // the stuck recovery until map waypoint graphs are integrated.
-            if (nullcmd.forwardmove > 0 && botIndex >= 0 && botIndex < 64)
+            // Never rotate off a confirmed visible target merely to steer.
+            if (chosen < 0 && nullcmd.forwardmove > 0 && botIndex >= 0 && botIndex < 64)
             {
                 const float *origin = g_entities[botIndex].r.currentOrigin;
                 const float baseYaw = static_cast<float>(nullcmd.angles[1] +
@@ -1211,7 +1212,12 @@ void __cdecl SV_BotUserMove(client_t *cl)
                 float start[3] = {origin[0], origin[1], origin[2] + 40.0f};
                 float bestYaw = baseYaw;
                 bool found = false;
-                const float offsets[5] = {0.0f, 0.65f, -0.65f, 1.25f, -1.25f};
+                // Alternating offset preference avoids repeatedly committing
+                // to the same wall when short forward routes fail.
+                static int lastRouteTurn[64] = {};
+                const float left[5] = {0.0f, 0.65f, -0.65f, 1.25f, -1.25f};
+                const float right[5] = {0.0f, -0.65f, 0.65f, -1.25f, 1.25f};
+                const float *offsets = (lastRouteTurn[botIndex] & 1) ? left : right;
                 for (int direction = 0; direction < 5; ++direction)
                 {
                     const float yaw = baseYaw + offsets[direction];
@@ -1226,11 +1232,15 @@ void __cdecl SV_BotUserMove(client_t *cl)
                     }
                 }
                 if (found)
+                {
+                    if (bestYaw != baseYaw) ++lastRouteTurn[botIndex];
                     nullcmd.angles[1] = (static_cast<int>(bestYaw *
                         (65536.0f / 6.2831853f)) -
                         static_cast<int>(v1->delta_angles[1])) & 65535;
+                }
                 else
                 {
+                    ++lastRouteTurn[botIndex];
                     nullcmd.forwardmove = -75;
                     nullcmd.rightmove = (botIndex & 1) ? 95 : -95;
                 }

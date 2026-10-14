@@ -1,0 +1,41 @@
+// PeZBOT control extension; loaded as a separate ModWarfare menufile.
+// The original ModWarfare assets remain unchanged.
+#include "ui/menudef.h"
+#include "ui_mp/common_macro.inc"
+#define CHOICE_X_START 0
+#define CHOICE_Y_START 34
+#include "ui_mp/menustyle.inc"
+#include "ui/choices_setup_common.menu"
+{
+    menuDef {
+        name "pezbot_manager"
+        rect 0 0 640 480
+        focuscolor COLOR_FOCUSED
+        style WINDOW_STYLE_EMPTY
+        blurWorld 7.0
+        onEsc { close "pezbot_manager"; }
+        itemDef {
+            style WINDOW_STYLE_FILLED
+            rect 0 0 640 480 HORIZONTAL_ALIGN_FULLSCREEN VERTICAL_ALIGN_FULLSCREEN
+            backcolor 0 0 0 0.75
+            visible 1
+            decoration
+        }
+        CHOICE_MENU_TITLE( "BOT MANAGEMENT" )
+        CHOICE_BUTTON( 1, "Add Bot", exec "toggle ios_bot_menu_add"; )
+        CHOICE_BUTTON( 2, "Remove Bot", exec "toggle ios_bot_menu_remove"; )
+        CHOICE_BUTTON( 3, "Remove All Bots", exec "toggle ios_bot_menu_clear"; )
+        CHOICE_BUTTON( 4, "Recruit Difficulty", exec "set ios_bot_menu_skill 1"; )
+        CHOICE_BUTTON( 5, "Easy Difficulty", exec "set ios_bot_menu_skill 2"; )
+        CHOICE_BUTTON( 6, "Normal Difficulty", exec "set ios_bot_menu_skill 3"; )
+        CHOICE_BUTTON( 7, "Hard Difficulty", exec "set ios_bot_menu_skill 4"; )
+        CHOICE_BUTTON( 8, "Veteran Difficulty", exec "set ios_bot_menu_skill 5"; )
+        CHOICE_BUTTON( 9, "Original Playstyle", exec "set ios_bot_menu_style 0"; )
+        CHOICE_BUTTON( 10, "Run and Gun", exec "set ios_bot_menu_style 1"; )
+        CHOICE_BUTTON( 11, "Mixed Playstyle", exec "set ios_bot_menu_style 2"; )
+        CHOICE_BUTTON( 12, "Bot Perks: ON", exec "set svr_pezbots_useperks 1"; )
+        CHOICE_BUTTON( 13, "Bot Perks: OFF", exec "set svr_pezbots_useperks 0"; )
+        CHOICE_BUTTON( 14, "Back", close "pezbot_manager"; )
+        #include "ui/safearea.menu"
+    }
+}

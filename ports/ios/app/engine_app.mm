@@ -545,12 +545,39 @@ static void *KISEngineThreadMain(void *argument)
     return [self hasGameData:root];
 }
 
+// Install private, user-supplied mod assets only when explicitly bundled
+// by the owner's local IPA packaging step. Never overwrite a mod already
+// installed by the player, and do not include commercial assets in CI.
+- (void)installBundledPrivateModIfAvailable:(NSString *)root
+{
+    NSString *name = @"ModWarfare-PeZBOT-Menu";
+    NSString *source = [[NSBundle.mainBundle.resourcePath
+        stringByAppendingPathComponent:@"PrivateGameData/mods"]
+        stringByAppendingPathComponent:name];
+    NSString *destination = [[root stringByAppendingPathComponent:@"mods"]
+        stringByAppendingPathComponent:name];
+    NSFileManager *fm = NSFileManager.defaultManager;
+    BOOL isDir = NO;
+    if (![fm fileExistsAtPath:source isDirectory:&isDir] || !isDir ||
+        [fm fileExistsAtPath:destination])
+        return;
+    NSString *modsPath = [root stringByAppendingPathComponent:@"mods"];
+    NSError *error = nil;
+    if (![fm createDirectoryAtPath:modsPath withIntermediateDirectories:YES
+                       attributes:nil error:&error] ||
+        ![fm copyItemAtPath:source toPath:destination error:&error])
+    {
+        NSLog(@"Private PeZBOT menu installation failed: %@", error);
+    }
+}
+
 - (void)startIfReady
 {
     if (_started)
         return;
 
     NSString *root = [self documentsPath];
+    [self installBundledPrivateModIfAvailable:root];
     NSError *bundleError = nil;
     if (![self hasGameData:root])
         [self installBundledGameDataIfNeeded:root error:&bundleError];

@@ -9,6 +9,7 @@ extern void KisakApple_ModCommand(const char *command);
 extern "C" void KisakApple_RequestNativeTestBot();
 extern "C" void KisakApple_RequestNativeBotRemoval(int count);
 extern "C" void KisakApple_SetNativeBotSkill(int skill);
+extern "C" void KisakApple_SetNativeBotPlaystyle(int style);
 
 @implementation KISTouchControls {
     kisak::touch::State _input;
@@ -190,6 +191,7 @@ extern "C" void KisakApple_SetNativeBotSkill(int skill);
 - (void)cycleBotPlaystyle:(id)sender {
     (void)sender;
     _botPlaystyle=(_botPlaystyle+1)%3;
+    KisakApple_SetNativeBotPlaystyle(_botPlaystyle);
     KisakApple_ModCommand(_botPlaystyle==0 ? "set svr_pezbots_playstyle 0" :
                           (_botPlaystyle==1 ? "set svr_pezbots_playstyle 1" :
                            "set svr_pezbots_playstyle 2"));

@@ -1188,6 +1188,41 @@ void __cdecl SV_BotUserMove(client_t *cl)
                     chosen, static_cast<int>(nullcmd.forwardmove),
                     (nullcmd.buttons & BUTTON_ATTACK) ? 1 : 0);
             }
+            // PeZBOT-inspired local route selection: test short candidate
+            // corridors before blindly walking at a wall. This supplements
+            // the stuck recovery until map waypoint graphs are integrated.
+            if (nullcmd.forwardmove > 0 && botIndex >= 0 && botIndex < 64)
+            {
+                const float *origin = g_entities[botIndex].r.currentOrigin;
+                const float baseYaw = static_cast<float>(nullcmd.angles[1] +
+                    static_cast<int>(v1->delta_angles[1])) * (6.2831853f / 65536.0f);
+                float start[3] = {origin[0], origin[1], origin[2] + 40.0f};
+                float bestYaw = baseYaw;
+                bool found = false;
+                const float offsets[5] = {0.0f, 0.65f, -0.65f, 1.25f, -1.25f};
+                for (int direction = 0; direction < 5; ++direction)
+                {
+                    const float yaw = baseYaw + offsets[direction];
+                    float end[3] = {start[0] + cosf(yaw) * 115.0f,
+                                    start[1] + sinf(yaw) * 115.0f, start[2]};
+                    if (G_LocationalTracePassed(start, end, botIndex, ENTITYNUM_NONE,
+                                               0x2806831, nullptr))
+                    {
+                        bestYaw = yaw;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found)
+                    nullcmd.angles[1] = (static_cast<int>(bestYaw *
+                        (65536.0f / 6.2831853f)) -
+                        static_cast<int>(v1->delta_angles[1])) & 65535;
+                else
+                {
+                    nullcmd.forwardmove = -75;
+                    nullcmd.rightmove = (botIndex & 1) ? 95 : -95;
+                }
+            }
             // Per-client low-cost position sampling detects obstructed movement.
             // Do not mark freshly spawned or stationary attacking bots as stuck.
             static float lastSampleOrigin[64][3] = {};

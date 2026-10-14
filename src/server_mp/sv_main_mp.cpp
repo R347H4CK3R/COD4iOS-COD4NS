@@ -1122,7 +1122,9 @@ void __cdecl SV_BotUserMove(client_t *cl)
                 nullcmd.angles[1] = (static_cast<int>(yaw * (65536.0f / 360.0f)) -
                                      static_cast<int>(v1->delta_angles[1])) & 65535;
                 nullcmd.buttons |= BUTTON_ATTACK;
-                nullcmd.forwardmove = bestDistanceSq > 350.0f * 350.0f ? 75 : 0;
+                // Keep mobile during engagements; sidestep at close range.
+                nullcmd.forwardmove = bestDistanceSq > 250.0f * 250.0f ? 85 : 24;
+                nullcmd.rightmove = (botIndex & 1) ? 44 : -44;
             }
             // Pursue a nearby enemy even when a wall blocks direct fire.
             // LOS is still mandatory for BUTTON_ATTACK above.
@@ -1210,6 +1212,10 @@ void __cdecl SV_BotUserMove(client_t *cl)
                     nullcmd.rightmove = (stuckAttempts[botIndex] & 1) ? 110 : -110;
                     if (stuckAttempts[botIndex] > 2)
                         nullcmd.buttons |= BUTTON_JUMP;
+                    // Escape away from the blocked heading on repeated stalls.
+                    if (stuckAttempts[botIndex] > 1)
+                        nullcmd.angles[1] = (nullcmd.angles[1] +
+                            ((stuckAttempts[botIndex] & 1) ? 8192 : -8192)) & 65535;
                 }
                 else if (chosen < 0 && nullcmd.forwardmove == 0)
                 {

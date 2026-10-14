@@ -3,6 +3,7 @@
 #endif
 
 #include <universal/q_shared.h>
+#include <cmath>
 #include "server_mp.h"
 
 #include <qcommon/qcommon.h>
@@ -1119,33 +1120,15 @@ void __cdecl SV_BotUserMove(client_t *cl)
                 nullcmd.buttons |= BUTTON_ATTACK;
                 nullcmd.forwardmove = bestDistanceSq > 350.0f * 350.0f ? 75 : 0;
             }
-            // Movement fallback remains simple until waypoint navigation exists.
-            if (KISAK_RANDOM() < 0.5)
-                nullcmd.buttons |= BUTTON_USE | BUTTON_USE_RELOAD;
-            if (KISAK_RANDOM() >= 0.3300000131130219)
+            // Basic patrol while no visible target is available.
+            if (chosen < 0)
             {
-                if (KISAK_RANDOM() < 0.5)
-                    nullcmd.forwardmove = -127;
+                nullcmd.forwardmove = 48;
+                nullcmd.rightmove = (botIndex & 1) ? 30 : -30;
+                nullcmd.angles[0] = cl->lastUsercmd.angles[0];
+                nullcmd.angles[1] = cl->lastUsercmd.angles[1];
             }
-            else
-            {
-                nullcmd.forwardmove = 127;
-            }
-            if (KISAK_RANDOM() >= 0.3300000131130219)
-            {
-                if (KISAK_RANDOM() < 0.5)
-                    nullcmd.rightmove = -127;
-            }
-            else
-            {
-                nullcmd.rightmove = 127;
-            }
-            if (KISAK_RANDOM() < 0.3300000131130219)
-                nullcmd.angles[0] = (int)(crandom() * 360.0);
-            if (KISAK_RANDOM() < 0.3300000131130219)
-                nullcmd.angles[1] = (int)(crandom() * 360.0);
-            if (KISAK_RANDOM() < 0.3300000131130219)
-                nullcmd.angles[2] = (int)(crandom() * 360.0);
+
         }
         cl->header.deltaMessage = cl->header.netchan.outgoingSequence - 1;
         SV_ClientThink(cl, &nullcmd);

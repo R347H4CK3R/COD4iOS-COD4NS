@@ -1118,9 +1118,9 @@ void __cdecl SV_BotUserMove(client_t *cl)
                 // Usercmd angles are relative to the server's delta-angle correction.
                 // Preserve the 16-bit angle wrapping expected by the engine.
                 nullcmd.angles[0] = (static_cast<int>(pitch * (65536.0f / 360.0f)) -
-                                     v1->delta_angles[0]) & 65535;
+                                     static_cast<int>(v1->delta_angles[0])) & 65535;
                 nullcmd.angles[1] = (static_cast<int>(yaw * (65536.0f / 360.0f)) -
-                                     v1->delta_angles[1]) & 65535;
+                                     static_cast<int>(v1->delta_angles[1])) & 65535;
                 nullcmd.buttons |= BUTTON_ATTACK;
                 nullcmd.forwardmove = bestDistanceSq > 350.0f * 350.0f ? 75 : 0;
             }
@@ -1155,8 +1155,8 @@ void __cdecl SV_BotUserMove(client_t *cl)
                     const float dy = g_entities[pursuitTarget].r.currentOrigin[1] -
                                      g_entities[botIndex].r.currentOrigin[1];
                     const float heading = atan2f(dy, dx) * (65536.0f / 6.2831853f);
-                    nullcmd.angles[0] = (-v1->delta_angles[0]) & 65535;
-                    nullcmd.angles[1] = (static_cast<int>(heading) - v1->delta_angles[1]) & 65535;
+                    nullcmd.angles[0] = (-static_cast<int>(v1->delta_angles[0])) & 65535;
+                    nullcmd.angles[1] = (static_cast<int>(heading) - static_cast<int>(v1->delta_angles[1])) & 65535;
                     nullcmd.forwardmove = 95;
                 }
             }

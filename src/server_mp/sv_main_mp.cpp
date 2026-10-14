@@ -1300,6 +1300,14 @@ void __cdecl SV_BotUserMove(client_t *cl)
             }
 
         }
+        // Keep synthetic commands monotonic. Pmove ignores stale commands,
+        // and large timestamp jumps can lead to unexpected simulation steps.
+        if (nullcmd.serverTime <= v1->commandTime)
+            nullcmd.serverTime = v1->commandTime + 1;
+        if (nullcmd.serverTime > svs.time + 200)
+            nullcmd.serverTime = svs.time + 200;
+        // Only retain attack while a live, visible target was actually chosen.
+        // The bot-controller branch explicitly acquires a target before firing.
         cl->header.deltaMessage = cl->header.netchan.outgoingSequence - 1;
         SV_ClientThink(cl, &nullcmd);
     }

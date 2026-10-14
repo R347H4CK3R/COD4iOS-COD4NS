@@ -412,6 +412,16 @@ void KisakApple_TouchEvent(int phase, float x, float y)
 // UI requests are queued until the game thread services the local server.
 // No console string parsing or ModWarfare GSC override is involved.
 static int g_nativeBotRequests = 0;
+static int g_nativeBotSkill = 3;
+extern "C" void KisakApple_SetNativeBotSkill(int skill) {
+    std::lock_guard<std::mutex> guard(g_touchLock);
+    g_nativeBotSkill = skill < 1 ? 1 : (skill > 5 ? 5 : skill);
+}
+extern "C" int KisakApple_GetNativeBotSkill() {
+    std::lock_guard<std::mutex> guard(g_touchLock);
+    return g_nativeBotSkill;
+}
+
 static int g_nativeBotRemoveRequests = 0;
 extern "C" void KisakApple_RequestNativeBotRemoval(int count) {
     std::lock_guard<std::mutex> guard(g_touchLock);

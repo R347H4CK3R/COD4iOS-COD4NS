@@ -1124,6 +1124,42 @@ void __cdecl SV_BotUserMove(client_t *cl)
                 nullcmd.buttons |= BUTTON_ATTACK;
                 nullcmd.forwardmove = bestDistanceSq > 350.0f * 350.0f ? 75 : 0;
             }
+            // Pursue a nearby enemy even when a wall blocks direct fire.
+            // LOS is still mandatory for BUTTON_ATTACK above.
+            if (chosen < 0 && (botTeam == TEAM_AXIS || botTeam == TEAM_ALLIES))
+            {
+                int pursuitTarget = -1;
+                float pursuitDistanceSq = 2400.0f * 2400.0f;
+                for (int candidate = 0; candidate < sv_maxclients->current.integer; ++candidate)
+                {
+                    if (candidate == botIndex || svs.clients[candidate].header.state != CS_ACTIVE)
+                        continue;
+                    const gentity_s *other = &g_entities[candidate];
+                    if (!other->client || other->client->sess.sessionState != SESS_STATE_PLAYING ||
+                        other->client->sess.cs.team == botTeam ||
+                        other->client->sess.cs.team == TEAM_SPECTATOR)
+                        continue;
+                    const float dx = other->r.currentOrigin[0] - g_entities[botIndex].r.currentOrigin[0];
+                    const float dy = other->r.currentOrigin[1] - g_entities[botIndex].r.currentOrigin[1];
+                    const float dist = dx * dx + dy * dy;
+                    if (dist < pursuitDistanceSq)
+                    {
+                        pursuitDistanceSq = dist;
+                        pursuitTarget = candidate;
+                    }
+                }
+                if (pursuitTarget >= 0)
+                {
+                    const float dx = g_entities[pursuitTarget].r.currentOrigin[0] -
+                                     g_entities[botIndex].r.currentOrigin[0];
+                    const float dy = g_entities[pursuitTarget].r.currentOrigin[1] -
+                                     g_entities[botIndex].r.currentOrigin[1];
+                    const float heading = atan2f(dy, dx) * (65536.0f / 6.2831853f);
+                    nullcmd.angles[0] = (-v1->delta_angles[0]) & 65535;
+                    nullcmd.angles[1] = (static_cast<int>(heading) - v1->delta_angles[1]) & 65535;
+                    nullcmd.forwardmove = 95;
+                }
+            }
             // Per-client low-cost position sampling detects obstructed movement.
             // Do not mark freshly spawned or stationary attacking bots as stuck.
             static float lastSampleOrigin[64][3] = {};
@@ -1169,8 +1205,11 @@ void __cdecl SV_BotUserMove(client_t *cl)
                     // Keep patrolling with consistent headings instead of random aim.
                     nullcmd.forwardmove = 75;
                     nullcmd.rightmove = (botIndex & 1) ? 38 : -38;
-                    nullcmd.angles[0] = cl->lastUsercmd.angles[0];
-                    nullcmd.angles[1] = cl->lastUsercmd.angles[1];
+                    if (nullcmd.forwardmove == 0)
+                    {
+                        nullcmd.angles[0] = cl->lastUsercmd.angles[0];
+                        nullcmd.angles[1] = cl->lastUsercmd.angles[1];
+                    }
                 }
             }
 

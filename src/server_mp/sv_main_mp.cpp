@@ -1405,6 +1405,7 @@ void __cdecl SV_PreFrame()
 
 #ifdef __APPLE__
 extern "C" int KisakApple_TakeNativeTestBotRequest();
+extern "C" void KisakApple_RequestNativeTestBot();
 extern "C" int KisakApple_TakeNativeBotRemovalRequest();
 extern "C" void KisakApple_RequestNativeBotRemoval(int count);
 extern "C" void KisakApple_SetNativeBotSkill(int skill);

@@ -1034,6 +1034,7 @@ void __cdecl SV_UpdatePerformanceFrame(float time)
 
 #ifdef __APPLE__
 extern "C" int KisakApple_GetNativeBotSkill();
+extern "C" int KisakApple_GetNativeBotPlaystyle();
 #endif
 
 void __cdecl SV_BotUserMove(client_t *cl)
@@ -1138,7 +1139,13 @@ void __cdecl SV_BotUserMove(client_t *cl)
                 if (((svs.time + botIndex * 127) % firingCycle) < firingWindow)
                     nullcmd.buttons |= BUTTON_ATTACK;
                 // Keep mobile during engagements; sidestep at close range.
-                nullcmd.forwardmove = bestDistanceSq > 250.0f * 250.0f ? 85 : 24;
+#ifdef __APPLE__
+                const int playstyle = KisakApple_GetNativeBotPlaystyle();
+#else
+                const int playstyle = 2;
+#endif
+                nullcmd.forwardmove = bestDistanceSq > 250.0f * 250.0f ?
+                    (playstyle == 0 ? 55 : 110) : (playstyle == 0 ? 8 : 24);
                 nullcmd.rightmove = (botIndex & 1) ? 44 : -44;
             }
             // Pursue a nearby enemy even when a wall blocks direct fire.
@@ -1174,7 +1181,12 @@ void __cdecl SV_BotUserMove(client_t *cl)
                     const float heading = atan2f(dy, dx) * (65536.0f / 6.2831853f);
                     nullcmd.angles[0] = (-static_cast<int>(v1->delta_angles[0])) & 65535;
                     nullcmd.angles[1] = (static_cast<int>(heading) - static_cast<int>(v1->delta_angles[1])) & 65535;
-                    nullcmd.forwardmove = 95;
+#ifdef __APPLE__
+                    const int pursuitStyle = KisakApple_GetNativeBotPlaystyle();
+#else
+                    const int pursuitStyle = 2;
+#endif
+                    nullcmd.forwardmove = pursuitStyle == 0 ? 55 : 110;
                 }
             }
             // Once per five seconds per bot: enough diagnostics without frame-rate log spam.

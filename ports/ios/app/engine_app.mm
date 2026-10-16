@@ -458,7 +458,7 @@ static void *KISEngineThreadMain(void *argument)
       if(name.length>32 || [name rangeOfCharacterFromSet:bad].location!=NSNotFound)continue;
       if([[NSFileManager defaultManager] fileExistsAtPath:[path stringByAppendingPathComponent:name] isDirectory:&dir] && dir)
          [entries addObject:[@"Load: " stringByAppendingString:name]];
-      if(entries.count>=5)break;
+      if(entries.count>=10)break;
     }
     [entries addObject:@"Back"];[self modCategory:@"MODS // Documents/mods" entries:entries];
 }

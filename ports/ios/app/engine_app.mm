@@ -11,6 +11,7 @@
 #import <QuartzCore/CAMetalLayer.h>
 #import <QuartzCore/CADisplayLink.h>
 #import <GameController/GameController.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include "../engine/controller_input.h"
 #import "touch_controls.h"
 #import "client_patch.h"
@@ -32,6 +33,7 @@ void KisakApple_TouchEvent(int phase, float x, float y);
 void KisakApple_TextInput(const char *utf8);
 void KisakApple_TextBackspace();
 void KisakApple_TextReturn();
+void KisakApple_ModCommand(const char *command);
 int KisakApple_TextInputActive();
 
 @interface KISControllerInput : NSObject
@@ -280,11 +282,16 @@ static void *KISEngineThreadMain(void *argument)
     // Development aid: engine startup commands (for example "+devmap killhouse")
     // come from KISAK_COMMANDLINE, which simctl forwards as SIMCTL_CHILD_KISAK_COMMANDLINE.
     const char *commandLine = getenv("KISAK_COMMANDLINE");
-    KisakApple_RunEngine(commandLine ? commandLine : "");
+    NSString *mod=[NSUserDefaults.standardUserDefaults stringForKey:@"COD4SelectedMod"];
+    NSString *args=commandLine?[NSString stringWithUTF8String:commandLine]:@"";
+    NSCharacterSet *bad=[[NSCharacterSet characterSetWithCharactersInString:@"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"] invertedSet];
+    if(mod.length && [mod rangeOfCharacterFromSet:bad].location==NSNotFound)
+        args=[NSString stringWithFormat:@"+set fs_game mods/%@ %@ %@",mod,([mod isEqualToString:@"PeZBOT"] || [mod isEqualToString:@"ModWarfare-PeZBOT"]) ? @"+exec pezbot.cfg" : @"",args];
+    KisakApple_RunEngine(args.UTF8String);
     return nullptr;
 }
 
-@interface KISEngineViewController : UIViewController <UIGestureRecognizerDelegate>
+@interface KISEngineViewController : UIViewController <UIGestureRecognizerDelegate, UIDocumentPickerDelegate>
 @end
 
 @implementation KISEngineViewController {
@@ -296,6 +303,9 @@ static void *KISEngineThreadMain(void *argument)
     KISControllerInput *_controllerInput;
     KISTouchControls *_touchControls;
     CADisplayLink *_displayLink;
+    UIView *_modPanel;
+    UIButton *_modToggle;
+    BOOL _modLatched;
 }
 
 - (void)loadView
@@ -314,6 +324,20 @@ static void *KISEngineThreadMain(void *argument)
     _status.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
     _status.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:_status];
+    UIButton *toggle=[UIButton buttonWithType:UIButtonTypeSystem];
+    [toggle setTitle:@"MOD" forState:UIControlStateNormal];
+    toggle.frame=CGRectMake(10,48,62,38);
+    toggle.backgroundColor=UIColor.darkGrayColor;toggle.tintColor=UIColor.cyanColor;
+    [toggle addTarget:self action:@selector(toggleMod) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:toggle];
+    _modToggle=toggle;
+    _modPanel=[[UIView alloc] initWithFrame:CGRectMake(86,20,300,410)];
+    _modPanel.backgroundColor=[UIColor colorWithRed:0.05 green:0.07 blue:0.12 alpha:0.97];
+    _modPanel.layer.borderWidth=1;_modPanel.layer.borderColor=UIColor.cyanColor.CGColor;
+    _modPanel.layer.cornerRadius=9;_modPanel.hidden=YES;
+    [self.view addSubview:_modPanel];
+    [self modCategory:@"COD4 // MOD MENU" entries:@[@"Player",@"Weapons",@"Game",@"Visuals",@"Modes",@"Close"]];
+    [NSTimer scheduledTimerWithTimeInterval:0.12 target:self selector:@selector(checkModCombo) userInfo:nil repeats:YES];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
         [_status.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:24],
@@ -322,6 +346,165 @@ static void *KISEngineThreadMain(void *argument)
     ]];
 }
 
+- (void)modCategory:(NSString *)name entries:(NSArray<NSString *> *)entries {
+    for(UIView *v in _modPanel.subviews)[v removeFromSuperview];
+    UILabel *h=[[UILabel alloc] initWithFrame:CGRectMake(14,8,276,34)];
+    h.text=name;h.textColor=UIColor.cyanColor;h.font=[UIFont monospacedSystemFontOfSize:16 weight:UIFontWeightBold];
+    [_modPanel addSubview:h];
+    for(NSUInteger i=0;i<entries.count;i++) {
+        UIButton *b=[UIButton buttonWithType:UIButtonTypeSystem];
+        [b setTitle:[@"  > " stringByAppendingString:entries[i]] forState:UIControlStateNormal];
+        b.contentHorizontalAlignment=UIControlContentHorizontalAlignmentLeft;
+        b.tintColor=UIColor.whiteColor;b.backgroundColor=[UIColor colorWithWhite:0.17 alpha:0.95];
+        b.frame=CGRectMake(12,42+31*i,276,28);b.tag=i;
+        [b addTarget:self action:@selector(modSelect:) forControlEvents:UIControlEventTouchUpInside];
+        [_modPanel addSubview:b];
+    }
+}
+- (void)toggleMod {
+    _modPanel.hidden=!_modPanel.hidden;
+    [self.view bringSubviewToFront:_modPanel];
+    [self.view bringSubviewToFront:_modToggle];
+}
+- (void)modMessage:(NSString *)message {
+    UIAlertController *a=[UIAlertController alertControllerWithTitle:@"COD4 MOD MENU" message:message preferredStyle:UIAlertControllerStyleAlert];
+    [a addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+    [self presentViewController:a animated:YES completion:nil];
+}
+- (void)modSelect:(UIButton *)sender {
+    NSArray *names=@[@"Player",@"Weapons",@"Perks",@"Lethals",@"Tacticals",@"Killstreaks",@"Game",@"Visuals",@"Close"];
+    NSString *choice=[sender currentTitle];
+    if([choice hasPrefix:@"  > "])choice=[choice substringFromIndex:4];
+    if([choice containsString:@"Back"]){[self modCategory:@"COD4 // MOD MENU" entries:names];return;}
+    if([choice containsString:@"Close"]){[self toggleMod];return;}
+    if([choice containsString:@"Player"]){
+       [self modCategory:@"PLAYER // PRIVATE CHEATS" entries:@[@"God Mode",@"Demigod",@"Noclip",@"UFO",@"No Target",@"Back"]];return;
+    }
+    if([choice containsString:@"Weapons"]){
+       [self modCategory:@"WEAPONS" entries:@[@"Assault Rifles",@"SMGs",@"Snipers",@"Shotguns",@"Pistols",@"Refill Ammo",@"Back"]];return;
+    }
+    NSDictionary<NSString *,NSArray<NSString *> *> *categories=@{
+      @"Assault Rifles":@[@"M4 Carbine",@"AK-47",@"M16A4",@"G36C",@"G3"],
+      @"SMGs":@[@"MP5",@"AK-74u",@"P90",@"Skorpion",@"Mini-Uzi"],
+      @"Snipers":@[@"M40A3",@"Barrett .50cal",@"Dragunov",@"R700"],
+      @"Shotguns":@[@"W1200",@"M1014"],@"Pistols":@[@"M9",@"USP .45",@"Desert Eagle"],
+      @"Perks":@[@"Stopping Power",@"Juggernaut",@"Sleight of Hand",@"Double Tap",@"Steady Aim"],
+      @"Lethals":@[@"Frag Grenade",@"Claymore",@"C4"],
+      @"Tacticals":@[@"Flashbang",@"Stun Grenade",@"Smoke Grenade"],
+      @"Killstreaks":@[@"3 Kills: UAV",@"5 Kills: Airstrike",@"7 Kills: Attack Helicopter"]
+    };
+    if(categories[choice]){
+       NSMutableArray *rows=[categories[choice] mutableCopy];[rows addObject:@"Back"];
+       [self modCategory:choice entries:rows];return;
+    }
+    NSDictionary<NSString *,NSString *> *weaponNames=@{
+      @"M4 Carbine":@"m4_mp",@"AK-47":@"ak47_mp",@"M16A4":@"m16_mp",@"G36C":@"g36c_mp",@"G3":@"g3_mp",
+      @"MP5":@"mp5_mp",@"AK-74u":@"ak74u_mp",@"P90":@"p90_mp",@"Skorpion":@"skorpion_mp",@"Mini-Uzi":@"uzi_mp",
+      @"M40A3":@"m40a3_mp",@"Barrett .50cal":@"barrett_mp",@"Dragunov":@"dragunov_mp",@"R700":@"remington700_mp",
+      @"W1200":@"winchester1200_mp",@"M1014":@"m1014_mp",@"M9":@"beretta_mp",@"USP .45":@"usp_mp",@"Desert Eagle":@"deserteagle_mp",
+      @"Frag Grenade":@"frag_grenade_mp",@"Claymore":@"claymore_mp",@"C4":@"c4_mp",
+      @"Flashbang":@"flash_grenade_mp",@"Stun Grenade":@"concussion_grenade_mp",@"Smoke Grenade":@"smoke_grenade_mp"
+    };
+    for(NSString *name in weaponNames)if([choice containsString:name]) {
+        NSString *item=weaponNames[name];KisakApple_ModCommand("sv_cheats 1");KisakApple_ModCommand([[@"give " stringByAppendingString:item] UTF8String]);
+        // The cheat command is queued; no misleading confirmation alert.
+        return;
+    }
+    NSArray *perks=categories[@"Perks"], *streaks=categories[@"Killstreaks"];
+    for(NSString *name in [perks arrayByAddingObjectsFromArray:streaks])if([choice containsString:name]) {
+        [NSUserDefaults.standardUserDefaults setObject:name forKey:
+            [perks containsObject:name]?@"COD4MenuSelectedPerk":@"COD4MenuSelectedStreak"];
+        [self modMessage:@"Selection saved as a preset; COD4 class/killstreak granting is not yet linked to this menu."];
+        return;
+    }
+    NSDictionary<NSString *,NSString *> *commands=@{
+       @"God Mode":@"god", @"Demigod":@"demigod", @"Noclip":@"noclip",
+       @"UFO":@"ufo", @"No Target":@"notarget",
+       @"Refill Ammo":@"give ammo", @"Give All Weapons":@"give all"
+    };
+    for(NSString *name in commands)if([choice containsString:name]) {
+        KisakApple_ModCommand("sv_cheats 1");
+        KisakApple_ModCommand(commands[name].UTF8String);
+        // Do not show a success popup until server-side execution can be confirmed.
+        return;
+    }
+    if([choice containsString:@"Game"]){[self modCategory:@"GAME" entries:@[@"Back"]];return;}
+    if([choice containsString:@"Visuals"]){[self modCategory:@"VISUALS" entries:@[@"Toggle touch controls",@"Back"]];return;}
+    if([choice containsString:@"Toggle touch controls"]){_touchControls.hidden=!_touchControls.hidden;return;}
+    if([choice containsString:@"Import Mod Folder"]){[self importModFolder];return;}
+    if([choice isEqualToString:@"Modes"]){[self modList];return;}
+    if([choice containsString:@"No mod"]){[NSUserDefaults.standardUserDefaults removeObjectForKey:@"COD4SelectedMod"];[self modMessage:@"Close and reopen the app to return to base COD4."];return;}
+    if([choice containsString:@"Load: "]) {
+       NSString *mod=[choice componentsSeparatedByString:@"Load: "].lastObject;
+       [NSUserDefaults.standardUserDefaults setObject:mod forKey:@"COD4SelectedMod"];
+       [self modMessage:@"Close and reopen COD4iOS to activate this mod."];return;
+    }
+    [self modMessage:@"This offline player or weapon feature is not yet implemented."];
+}
+- (void)modList {
+    NSString *path=[[self documentsPath] stringByAppendingPathComponent:@"mods"];
+    NSArray *files=[[NSFileManager defaultManager] contentsOfDirectoryAtPath:path error:nil]?:@[];
+    NSMutableArray *entries=[NSMutableArray arrayWithObjects:@"Import Mod Folder",@"No mod",nil];
+    NSCharacterSet *bad=[[NSCharacterSet characterSetWithCharactersInString:@"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"] invertedSet];
+    for(NSString *name in [files sortedArrayUsingSelector:@selector(compare:)]) {
+      BOOL dir=NO;
+      if(name.length>32 || [name rangeOfCharacterFromSet:bad].location!=NSNotFound)continue;
+      if([[NSFileManager defaultManager] fileExistsAtPath:[path stringByAppendingPathComponent:name] isDirectory:&dir] && dir)
+         [entries addObject:[@"Load: " stringByAppendingString:name]];
+      if(entries.count>=5)break;
+    }
+    [entries addObject:@"Back"];[self modCategory:@"MODS // Documents/mods" entries:entries];
+}
+- (void)importModFolder {
+    UIDocumentPickerViewController *picker=[[UIDocumentPickerViewController alloc]
+        initWithDocumentTypes:@[@"public.folder"] inMode:UIDocumentPickerModeOpen];
+    picker.delegate=self;
+    picker.allowsMultipleSelection=NO;
+    [self presentViewController:picker animated:YES completion:nil];
+}
+- (void)documentPicker:(UIDocumentPickerViewController *)controller
+ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
+    NSURL *source=urls.firstObject;
+    if(!source)return;
+    BOOL secured=[source startAccessingSecurityScopedResource];
+    NSFileManager *fm=NSFileManager.defaultManager;
+    NSString *base=[[self documentsPath] stringByAppendingPathComponent:@"mods"];
+    NSError *err=nil;
+    [fm createDirectoryAtPath:base withIntermediateDirectories:YES attributes:nil error:&err];
+    NSString *name=source.lastPathComponent;
+    // Only single, safe path components are accepted.
+    NSCharacterSet *bad=[[NSCharacterSet characterSetWithCharactersInString:
+        @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"] invertedSet];
+    if(!name.length || name.length>40 || [name rangeOfCharacterFromSet:bad].location!=NSNotFound) {
+        err=[NSError errorWithDomain:@"COD4Mods" code:1
+            userInfo:@{NSLocalizedDescriptionKey:@"Rename the mod folder with letters, numbers, _ or - and import again."}];
+    }
+    if(!err){
+        NSString *dest=[base stringByAppendingPathComponent:name];
+        if([fm fileExistsAtPath:dest]) {
+            err=[NSError errorWithDomain:@"COD4Mods" code:2
+                userInfo:@{NSLocalizedDescriptionKey:@"That mod folder already exists. Remove or rename it before importing."}];
+        } else {
+            [fm copyItemAtURL:source toURL:[NSURL fileURLWithPath:dest isDirectory:YES] error:&err];
+        }
+    }
+    if(secured)[source stopAccessingSecurityScopedResource];
+    [self modList];
+    [self modMessage:err?err.localizedDescription:
+         @"Imported to COD4iOS Documents/mods. Reopen the built-in Mods menu to refresh."];
+}
+- (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller {
+    (void)controller;
+}
+- (void)checkModCombo {
+    BOOL down=NO;
+    for(GCController *c in GCController.controllers) {
+        GCExtendedGamepad *g=c.extendedGamepad;
+        if(g && g.leftShoulder.pressed && g.rightShoulder.pressed && g.dpad.up.pressed)down=YES;
+    }
+    if(down && !_modLatched)[self toggleMod];
+    _modLatched=down;
+}
 - (NSString *)documentsPath
 {
     return NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
@@ -382,6 +565,25 @@ static void *KISEngineThreadMain(void *argument)
                        @"and copy in the contents of your Call of Duty 4 folder: localization.txt, main and zone. "
                        @"Then reopen the app.";
         return;
+    }
+
+    // Non-destructive bundled mod installation, including upgrades with existing game data.
+    NSFileManager *modFiles = NSFileManager.defaultManager;
+    NSString *installedMods = [root stringByAppendingPathComponent:@"mods"];
+    NSString *bundleMods = [NSBundle.mainBundle.resourcePath stringByAppendingPathComponent:@"SeedGameData/mods"];
+    [modFiles createDirectoryAtPath:installedMods withIntermediateDirectories:YES attributes:nil error:nil];
+    for (NSString *modName in @[@"PeZBOT", @"ModWarfare", @"ModWarfare-PeZBOT"]) {
+        NSString *sourceMod = [bundleMods stringByAppendingPathComponent:modName];
+        NSString *targetMod = [installedMods stringByAppendingPathComponent:modName];
+        BOOL isDir = NO;
+        if ([modFiles fileExistsAtPath:sourceMod isDirectory:&isDir] && isDir &&
+            ![modFiles fileExistsAtPath:targetMod]) {
+            NSError *modError = nil;
+            if (![modFiles copyItemAtPath:sourceMod toPath:targetMod error:&modError]) {
+                _status.text = [NSString stringWithFormat:@"Unable to install %@: %@", modName, modError.localizedDescription];
+                return;
+            }
+        }
     }
 
 #ifdef KISAK_MP
@@ -458,6 +660,8 @@ static void *KISEngineThreadMain(void *argument)
         _controllerInput = [KISControllerInput new];
         _touchControls=[[KISTouchControls alloc] initWithFrame:self.view.bounds];
         [self.view addSubview:_touchControls];
+        [self.view bringSubviewToFront:_modPanel];
+        [self.view bringSubviewToFront:_modToggle];
         _controllerInput.touchControls=_touchControls;
         __weak KISControllerInput *input=_controllerInput;
         _touchControls.inputChanged=^{ [input publish]; };

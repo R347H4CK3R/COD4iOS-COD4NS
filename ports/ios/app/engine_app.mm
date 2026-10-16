@@ -428,7 +428,14 @@ static void *KISEngineThreadMain(void *argument)
         // Do not show a success popup until server-side execution can be confirmed.
         return;
     }
-    if([choice containsString:@"Game"]){[self modCategory:@"GAME" entries:@[@"Back"]];return;}
+    if([choice isEqualToString:@"Game"]){[self modCategory:@"GAME" entries:@[@"Bot Management",@"Back"]];return;}
+    if([choice isEqualToString:@"Bot Management"]){[self modCategory:@"PEZBOT // MANUAL CONTROL" entries:@[@"Add One Bot",@"Remove One Bot",@"Remove All Bots",@"Bot Skill: Easy",@"Bot Skill: Normal",@"Bot Skill: Hard",@"Back"]];return;}
+    if([choice isEqualToString:@"Add One Bot"]){KisakApple_ModCommand("set svr_pezbots 1");return;}
+    if([choice isEqualToString:@"Remove One Bot"]){KisakApple_ModCommand("set svr_pezbots_botKickCount 1");return;}
+    if([choice isEqualToString:@"Remove All Bots"]){KisakApple_ModCommand("set svr_pezbots_botKickCount 32");return;}
+    if([choice isEqualToString:@"Bot Skill: Easy"]){KisakApple_ModCommand("set svr_pezbots_skill 0.3");return;}
+    if([choice isEqualToString:@"Bot Skill: Normal"]){KisakApple_ModCommand("set svr_pezbots_skill 0.6");return;}
+    if([choice isEqualToString:@"Bot Skill: Hard"]){KisakApple_ModCommand("set svr_pezbots_skill 1.0");return;}
     if([choice containsString:@"Visuals"]){[self modCategory:@"VISUALS" entries:@[@"Toggle touch controls",@"Back"]];return;}
     if([choice containsString:@"Toggle touch controls"]){_touchControls.hidden=!_touchControls.hidden;return;}
     if([choice containsString:@"Import Mod Folder"]){[self importModFolder];return;}

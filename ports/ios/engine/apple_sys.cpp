@@ -364,6 +364,7 @@ struct KisakTouch
 };
 std::mutex g_touchLock;
 std::vector<KisakTouch> g_touches;
+std::vector<std::string> g_modCommands;
 int g_cursorX = 0;
 int g_cursorY = 0;
 bool g_haveCursor = false;
@@ -407,8 +408,50 @@ void KisakApple_TouchEvent(int phase, float x, float y)
     g_touches.push_back(KisakTouch{phase, static_cast<int>(x), static_cast<int>(y)});
 }
 
+// Queue only known offline commands from the native iOS menu.
+void KisakApple_ModCommand(const char *command)
+{
+    if (!command) return;
+    static const char * const allowed[] = {
+        "sv_cheats 1", "god", "demigod", "noclip", "ufo", "notarget",
+        "give ammo", "give all",
+        "set svr_pezbots 1",
+        "set svr_pezbots_botKickCount 1",
+        "set svr_pezbots_botKickCount 32",
+        "set svr_pezbots_skill 0.3",
+        "set svr_pezbots_skill 0.6",
+        "set svr_pezbots_skill 1.0"
+    };
+    bool valid = false;
+    for (const char *item : allowed)
+        if (std::strcmp(item, command) == 0) { valid = true; break; }
+    if (!valid && std::strncmp(command, "give ", 5) == 0) {
+        static const char * const weapons[] = {
+            "m4_mp","ak47_mp","m16_mp","g36c_mp","g3_mp",
+            "mp5_mp","ak74u_mp","p90_mp","skorpion_mp","uzi_mp",
+            "m40a3_mp","barrett_mp","dragunov_mp","remington700_mp",
+            "winchester1200_mp","m1014_mp","beretta_mp","usp_mp",
+            "deserteagle_mp","frag_grenade_mp","claymore_mp","c4_mp",
+            "flash_grenade_mp","concussion_grenade_mp","smoke_grenade_mp"
+        };
+        for (const char *name : weapons)
+            if (std::strcmp(command + 5, name) == 0) { valid = true; break; }
+    }
+    if (!valid) return;
+    std::lock_guard<std::mutex> guard(g_touchLock);
+    if (g_modCommands.size() < 32)
+        g_modCommands.emplace_back(command);
+}
+
 void IN_Frame()
 {
+    std::vector<std::string> commands;
+    {
+        std::lock_guard<std::mutex> guard(g_touchLock);
+        commands.swap(g_modCommands);
+    }
+    for (const auto &command : commands)
+        Cbuf_AddText(0, (command + "\\n").c_str());
     KisakApple_ControllerFrame();
     std::vector<KisakTouch> touches;
     {

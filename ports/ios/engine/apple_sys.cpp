@@ -30,6 +30,7 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#include <cstring>
 #include "controller_input.h"
 
 #include <qcommon/qcommon.h>

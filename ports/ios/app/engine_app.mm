@@ -286,7 +286,7 @@ static void *KISEngineThreadMain(void *argument)
     NSString *args=commandLine?[NSString stringWithUTF8String:commandLine]:@"";
     NSCharacterSet *bad=[[NSCharacterSet characterSetWithCharactersInString:@"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"] invertedSet];
     if(mod.length && [mod rangeOfCharacterFromSet:bad].location==NSNotFound)
-        args=[NSString stringWithFormat:@"+set fs_game mods/%@ %@ %@",mod,([mod isEqualToString:@"PeZBOT"] || [mod isEqualToString:@"ModWarfare-PeZBOT"]) ? @"+exec pezbot.cfg" : @"",args];
+        args=[NSString stringWithFormat:@"+set fs_game mods/%@ %@ %@",mod,([mod isEqualToString:@"PeZBOT"] || [mod isEqualToString:@"ModWarfare-PeZBOT"] || [mod isEqualToString:@"MWPezbotRankFix"]) ? @"+exec pezbot.cfg" : @"",args];
     KisakApple_RunEngine(args.UTF8String);
     return nullptr;
 }
@@ -579,7 +579,7 @@ static void *KISEngineThreadMain(void *argument)
     NSString *installedMods = [root stringByAppendingPathComponent:@"mods"];
     NSString *bundleMods = [NSBundle.mainBundle.resourcePath stringByAppendingPathComponent:@"SeedGameData/mods"];
     [modFiles createDirectoryAtPath:installedMods withIntermediateDirectories:YES attributes:nil error:nil];
-    for (NSString *modName in @[@"PeZBOT", @"ModWarfare", @"ModWarfare-PeZBOT"]) {
+    for (NSString *modName in @[@"PeZBOT", @"ModWarfare", @"ModWarfare-PeZBOT", @"MWPezbotRankFix"]) {
         NSString *sourceMod = [bundleMods stringByAppendingPathComponent:modName];
         NSString *targetMod = [installedMods stringByAppendingPathComponent:modName];
         BOOL isDir = NO;

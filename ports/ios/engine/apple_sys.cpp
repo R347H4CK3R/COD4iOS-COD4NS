@@ -451,7 +451,7 @@ void IN_Frame()
         commands.swap(g_modCommands);
     }
     for (const auto &command : commands)
-        Cbuf_AddText(0, (command + "\\n").c_str());
+        Cbuf_AddText(0, (command + "\n").c_str());
     KisakApple_ControllerFrame();
     std::vector<KisakTouch> touches;
     {
